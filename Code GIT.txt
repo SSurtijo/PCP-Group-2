@@ -1,0 +1,30 @@
+Intial setup =
+
+1. Initializes a new Git repository in your current folder (Creates a hidden ".git" folder where Git will track all changes to your files).
+# git init (Run this once when starting a new project to tell Git, "start tracking my code here.")
+
+2. Adds all files in the folder to Git's "staging area (basket where you collect changes before saving them)".
+# git add . ("." means add everything in this folder or filename for single file)
+
+3. Saves (commits) all staged changes in Git, along with a message (-m) describing what you did.
+# git commit -m "Initial setup commit with app.py"
+
+4. Renames your current branch to main.
+# git branch -M main
+
+5. Connects your local Git repository to a remote repository on GitHub (called origin), the link is the URL to your GitHub project.
+# git remote add origin https://github.com/SSurtijo/PCP-Group-2.git
+
+6. Pushes (uploads) your commits from your local main branch to the main branch on GitHub.
+# git push -u origin main ("-u" means set origin main as the default. Next time, you can just type git push) (Since you already ran -u origin main during setup, just typing git push will upload to GitHub)
+
+7. This creates a branch called "feature-name" from the current state of main, and you are now working on that new branch.
+git checkout -b feature-name ("checkout" Switch to a different branch, "-b" Create a new branch and immediately switch to it)
+
+Tools =
+
+Check Current Status (Shows which files are changed, staged, or need committing)
+git status
+
+Pull Latest Changes (if collaborating)
+git pull (Updates your local copy with changes from GitHub)
