@@ -19,12 +19,12 @@ Intial setup =
 # git push -u origin main ("-u" means set origin main as the default. Next time, you can just type git push) (Since you already ran -u origin main during setup, just typing git push will upload to GitHub)
 
 7. This creates a branch called "feature-name" from the current state of main, and you are now working on that new branch.
-git checkout -b feature-name ("checkout" Switch to a different branch, "-b" Create a new branch and immediately switch to it)
+# git checkout -b feature-name ("checkout" Switch to a different branch, "-b" Create a new branch and immediately switch to it)
 
 Tools =
 
 Check Current Status (Shows which files are changed, staged, or need committing)
-git status
+# git status
 
 Pull Latest Changes (if collaborating)
-git pull (Updates your local copy with changes from GitHub)
+# git pull (Updates your local copy with changes from GitHub)
