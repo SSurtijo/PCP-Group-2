@@ -28,3 +28,6 @@ Check Current Status (Shows which files are changed, staged, or need committing)
 
 Pull Latest Changes (if collaborating)
 # git pull (Updates your local copy with changes from GitHub)
+
+Check your current branch
+# git branch
