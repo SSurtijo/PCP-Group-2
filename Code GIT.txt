@@ -16,7 +16,7 @@ Intial setup =
 # git remote add origin https://github.com/SSurtijo/PCP-Group-2.git
 
 6. Pushes (uploads) your commits from your local main branch to the main branch on GitHub.
-# git push -u origin main ("-u" means set origin main as the default. Next time, you can just type git push) (Since you already ran -u origin main during setup, just typing git push will upload to GitHub)
+# git push -u origin main ("-u" means set origin main as the default. Next time, you can just type git push) (Since you already ran "-u" origin main during setup, just typing "git push" will upload to GitHub) ("git push origin main" also work)
 
 7. This creates a branch called "feature-name" from the current state of main, and you are now working on that new branch.
 # git checkout -b feature-name ("checkout" Switch to a different branch, "-b" Create a new branch and immediately switch to it)
@@ -28,3 +28,6 @@ Check Current Status (Shows which files are changed, staged, or need committing)
 
 Pull Latest Changes (if collaborating)
 # git pull (Updates your local copy with changes from GitHub)
+
+Check your current branch
+# git branch
