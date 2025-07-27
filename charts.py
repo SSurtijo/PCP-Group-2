@@ -23,7 +23,7 @@ def altair_distribution_chart(df):
     base = alt.Chart(dist)
     bars = base.mark_bar(color="skyblue").encode(
         x=alt.X('NIST Function', sort=None),
-        y=alt.Y('BarValue', scale=alt.Scale(domain=[0, 100])),
+        y=alt.Y('BarValue', scale=alt.Scale(domain=[0, 100]), title='Score'),
         tooltip=['NIST Function', 'Percentage', 'Risk Count', 'Risks']
     )
     hover = base.mark_point(size=200, opacity=0).encode(
@@ -33,6 +33,18 @@ def altair_distribution_chart(df):
     )
     return bars + hover
 
+def altair_individual_risk_chart(df):
+    """Individual Risk Chart (each risk and its score)."""
+    df = df.copy()
+    df["Original Score"] = df["Score"]
+    df["BarValue"] = df["Score"].apply(lambda x: 0.1 if x == 0 else x)
+
+    return alt.Chart(df).mark_bar().encode(
+        x=alt.X('BarValue', scale=alt.Scale(domain=[0, 100]), title='Score'),
+        y=alt.Y('Risk Name', sort='-x'),
+        color=alt.Color('BarValue', scale=alt.Scale(domain=[0, 100], range=['green', 'red'])),
+        tooltip=['Risk Name', alt.Tooltip('Original Score', title='Score')]
+    )
 
 def altair_control_maturity_chart(df, target_score=20):
     """Control Maturity (average score by NIST Function)."""
@@ -55,7 +67,7 @@ def altair_control_maturity_chart(df, target_score=20):
     base = alt.Chart(avg_scores)
     bars = base.mark_bar(color="skyblue").encode(
         x=alt.X('NIST Function', sort=None),
-        y=alt.Y('BarValue', scale=alt.Scale(domain=[0, 100])),
+        y=alt.Y('BarValue', scale=alt.Scale(domain=[0, 100]), title='Score'),
         tooltip=['NIST Function', 'Avg Score', 'Risk Count', 'Risks']
     )
     hover = base.mark_point(size=200, opacity=0).encode(
@@ -63,22 +75,10 @@ def altair_control_maturity_chart(df, target_score=20):
         y='BarValue',
         tooltip=['NIST Function', 'Avg Score', 'Risk Count', 'Risks']
     )
-    target = alt.Chart(pd.DataFrame({"Target": [target_score]})).mark_rule(
+    target = alt.Chart().mark_rule(
         color='red', strokeDash=[6, 3]
-    ).encode(y='Target')
+    ).encode(
+        y=alt.datum(target_score)
+    )
 
     return bars + hover + target
-
-
-def altair_individual_risk_chart(df):
-    """Individual Risk Chart (each risk and its score)."""
-    df = df.copy()
-    df["Original Score"] = df["Score"]
-    df["BarValue"] = df["Score"].apply(lambda x: 0.1 if x == 0 else x)
-
-    return alt.Chart(df).mark_bar().encode(
-        x=alt.X('BarValue', scale=alt.Scale(domain=[0, 100]), title='Score'),
-        y=alt.Y('Risk Name', sort='-x'),
-        color=alt.Color('BarValue', scale=alt.Scale(domain=[0, 100], range=['green', 'red'])),
-        tooltip=['Risk Name', alt.Tooltip('Original Score', title='Score')]
-    )
