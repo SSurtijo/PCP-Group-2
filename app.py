@@ -1,6 +1,10 @@
 import streamlit as st
 import pandas as pd
-from charts import altair_distribution_chart, altair_control_maturity_chart, altair_individual_risk_chart
+from charts import (
+    altair_distribution_chart,
+    altair_control_maturity_chart,
+    altair_individual_risk_chart,
+)
 from utils import load_past_scans
 
 # ------------------------------
@@ -17,7 +21,11 @@ page = st.sidebar.radio("Navigation", ["Domain Input", "Past Scans"])
 if page == "Domain Input":
     st.subheader("Enter Domain or IP")
     selected = st.selectbox("Select Past Domain or Enter New:", past_domains)
-    domain = st.text_input("Domain/IP", placeholder="e.g., example.com") if selected == "-- New Domain --" else selected
+    domain = (
+        st.text_input("Domain/IP", placeholder="e.g., example.com")
+        if selected == "-- New Domain --"
+        else selected
+    )
 
     if st.button("Run Scan"):
         if not domain:
@@ -25,7 +33,9 @@ if page == "Domain Input":
         else:
             scan = next((item for item in past_scans if item["domain"] == domain), None)
             if scan:
-                st.success(f"Showing saved scan for {domain} (Last Scan: {scan['last_scan']})")
+                st.success(
+                    f"Showing saved scan for {domain} (Last Scan: {scan['last_scan']})"
+                )
                 df = pd.DataFrame(scan["results"])
                 df.insert(0, "No.", range(1, len(df) + 1))
 
@@ -33,16 +43,30 @@ if page == "Domain Input":
                     st.table(df.set_index("No."))
 
                 # Analytics
-                with st.expander("Analytics Overview (Click to Expand/Collapse)", expanded=True):
-                    with st.expander("Distribution of Risk Findings (NIST Functions)", expanded=True):
-                        st.altair_chart(altair_distribution_chart(df), use_container_width=True)
-                    with st.expander("Individual Risk Graph (0 = good, 100 = bad)", expanded=True):
+                with st.expander(
+                    "Analytics Overview (Click to Expand/Collapse)", expanded=True
+                ):
+                    with st.expander(
+                        "Distribution of Risk Findings (NIST Functions)", expanded=True
+                    ):
                         st.altair_chart(
-                            altair_individual_risk_chart(df.sort_values(by="Score", ascending=False)),
-                            use_container_width=True
+                            altair_distribution_chart(df), use_container_width=True
                         )
-                    with st.expander("Control Maturity Graph (0 = good, 100 = bad)", expanded=True):
-                        st.altair_chart(altair_control_maturity_chart(df), use_container_width=True)
+                    with st.expander(
+                        "Individual Risk Graph (0 = good, 100 = bad)", expanded=True
+                    ):
+                        st.altair_chart(
+                            altair_individual_risk_chart(
+                                df.sort_values(by="Score", ascending=False)
+                            ),
+                            use_container_width=True,
+                        )
+                    with st.expander(
+                        "Control Maturity Graph (0 = good, 100 = bad)", expanded=True
+                    ):
+                        st.altair_chart(
+                            altair_control_maturity_chart(df), use_container_width=True
+                        )
             else:
                 st.warning(f"No previous scan found for {domain}.")
 
