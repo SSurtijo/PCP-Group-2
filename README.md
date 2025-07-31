@@ -9,4 +9,4 @@ A Streamlit dashboard for visualizing cybersecurity risk findings and mapping th
 Make sure you have Python installed. Then install the following dependencies:
 
 ```bash
-pip install streamlit pandas alta
+pip install streamlit pandas altair
