@@ -32,6 +32,8 @@ Pull Latest Changes (if collaborating)
 Check your current branch
 # git branch
 
+Tools =
+
 # git fetch → Downloads latest changes from GitHub (but doesn't apply)
 
 # git merge origin/main → Applies the downloaded changes to your current branch
