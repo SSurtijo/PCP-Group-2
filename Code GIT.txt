@@ -32,7 +32,7 @@ Pull Latest Changes (if collaborating)
 Check your current branch
 # git branch
 
-Tools =
+Update =
 
 # git fetch → Downloads latest changes from GitHub (but doesn't apply)
 
