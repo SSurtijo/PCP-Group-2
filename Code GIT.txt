@@ -39,3 +39,7 @@ Update =
 # git merge origin/main → Applies the downloaded changes to your current branch
 
 # git rebase origin/main → Same result, but keeps a cleaner commit history
+
+Hard reset
+#git fetch origin
+#git reset --hard origin/main
