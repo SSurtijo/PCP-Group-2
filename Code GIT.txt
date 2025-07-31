@@ -34,11 +34,10 @@ Check your current branch
 
 Update =
 
-# git fetch → Downloads latest changes from GitHub (but doesn't apply)
-
-# git merge origin/main → Applies the downloaded changes to your current branch
-
-# git rebase origin/main → Same result, but keeps a cleaner commit history
+#git commit	Saves your local changes as a commit (but not yet on GitHub)
+#git fetch	Downloads new commits from GitHub (but doesn't apply them)
+#git rebase origin/main	Re-applies your local commits on top of the new commits from GitHub
+#git merge origin/main	Merges remote changes into your local history with a merge commit
 
 Hard reset
 #git fetch origin
