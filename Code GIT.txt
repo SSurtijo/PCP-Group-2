@@ -31,3 +31,9 @@ Pull Latest Changes (if collaborating)
 
 Check your current branch
 # git branch
+
+git fetch → Downloads latest changes from GitHub (but doesn't apply)
+
+git merge origin/main → Applies the downloaded changes to your current branch
+
+git rebase origin/main → Same result, but keeps a cleaner commit history
