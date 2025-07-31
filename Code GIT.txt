@@ -42,3 +42,16 @@ Update =
 Hard reset
 #git fetch origin
 git reset --hard origin/main
+
+# Step 1: You make changes locally
+git add .
+git commit -m "my local changes"
+
+# Step 2: You get the latest changes from GitHub
+git fetch origin
+
+# Step 3: You apply their changes + yours cleanly
+git rebase origin/main    # OR git merge origin/main
+
+# Step 4: Push everything to GitHub
+git push origin main
