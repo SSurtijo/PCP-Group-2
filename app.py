@@ -35,7 +35,6 @@ from charts import csf_function_distribution_chart, company_category_scores_char
 
 
 st.set_page_config(page_title="Supplier Cyber Risk", layout="wide")
-st.write("### Supplier Cyber Risk Dashboard")
 
 # Load Companies
 try:
@@ -61,6 +60,7 @@ def show_all_companies(companies_payload):
 
 # ------------------- VIEW 2: Risk Dashboard -------------------
 def show_risk_dashboard(companies_payload):
+    st.write("### Supplier Cyber Risk Dashboard")
     # Company select dropdown (moved from sidebar to main content)
     options, mapping = list_company_options(companies_payload)
     selected_company_label = st.selectbox("Company", options, index=0)
@@ -345,7 +345,7 @@ def show_risk_dashboard(companies_payload):
 
 
 # ------------------- View Switch -------------------
-view = st.sidebar.radio("View", ["Risk Dashboard", "All Companies"], index=0)
+view = st.sidebar.radio("Supplier Cyber Risk", ["Risk Dashboard", "All Companies"], index=0)
 if view == "All Companies":
     show_all_companies(companies_payload)
 else:

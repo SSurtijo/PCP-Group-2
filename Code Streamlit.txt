@@ -1,3 +1,0 @@
-streamlit run filename.py (localhost)
-
-black . (Format code)
