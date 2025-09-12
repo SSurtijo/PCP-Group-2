@@ -1,6 +1,6 @@
 # app.py
 # -----------------------------------------------------------------------------
-# Supplier Cyber Risk Dashboard (Streamlit UI)
+# Dashboard (Streamlit UI)
 # -----------------------------------------------------------------------------
 
 import streamlit as st
@@ -48,9 +48,10 @@ if not companies_payload:
     st.stop()
 
 
-# ------------------- VIEW 1: All Companies -------------------
+# ------------------- VIEW 1: Companies -------------------
 def show_all_companies(companies_payload):
-    st.subheader("All Companies")
+    st.subheader("Companies")
+    st.metric("Total Companies", len(companies_payload))
     df_all = stringify_nested(to_df(companies_payload))
     if not df_all.empty:
         st.dataframe(df_all, use_container_width=True)
@@ -58,9 +59,9 @@ def show_all_companies(companies_payload):
         st.info("No data.")
 
 
-# ------------------- VIEW 2: Risk Dashboard -------------------
-def show_risk_dashboard(companies_payload):
-    st.write("### Supplier Cyber Risk Dashboard")
+# ------------------- VIEW 2: Dashboard -------------------
+def show_dashboard(companies_payload):
+    st.write("### Dashboard")
     # Company select dropdown (moved from sidebar to main content)
     options, mapping = list_company_options(companies_payload)
     selected_company_label = st.selectbox("Company", options, index=0)
@@ -345,8 +346,8 @@ def show_risk_dashboard(companies_payload):
 
 
 # ------------------- View Switch -------------------
-view = st.sidebar.radio("Supplier Cyber Risk", ["Risk Dashboard", "All Companies"], index=0)
-if view == "All Companies":
+view = st.sidebar.radio("Supplier Cyber Risk", ["Dashboard", "Companies"], index=0)
+if view == "Companies":
     show_all_companies(companies_payload)
 else:
-    show_risk_dashboard(companies_payload)
+    show_dashboard(companies_payload)
