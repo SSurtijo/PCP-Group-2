@@ -1,102 +1,148 @@
+# charts.py
 import altair as alt
 import pandas as pd
+from helpers import (
+    CATEGORY_TO_CSF,
+    CSF_FUNCTION_FULL,
+    get_function_from_code_or_ref,
+)
 
-# This file contains all chart-related functions
 
+def csf_function_distribution_chart(
+    findings_df: pd.DataFrame,
+    internal_gv_df: pd.DataFrame | None = None,
+    type_col_candidates=("Type", "finding_type", "Category", "category"),
+):
+    """
+    Build a function-level distribution (GV/ID/PR/DE/RS/RC) as percentages (0–100).
 
-def altair_distribution_chart(df):
-    """Distribution of Risk Findings (NIST Functions)."""
-    functions = ["Identify", "Protect", "Detect", "Respond", "Recover"]
-    dist = pd.DataFrame({"NIST Function": functions})
+    Inputs:
+      - findings_df: DataFrame that contains a column with your company categories (Type).
+      - internal_gv_df: optional DataFrame from internal API (GV control_ref rows).
+        If provided, each row counts +1 to GV.
+    Logic:
+      1) Count frequency of each company category in findings.
+      2) Expand each category to its CSF controls (CATEGORY_TO_CSF).
+      3) Convert each control to its Function (ID/PR/DE/RS/RC).
+      4) If internal_gv_df is present, increment GV counts for each GV row.
+      5) Convert counts to percentages of the total.
+    """
 
-    if not df.empty:
-        counts = df["NIST Function"].value_counts(normalize=True) * 100
-        dist["Percentage"] = dist["NIST Function"].map(counts).fillna(0).round(2)
-        risk_counts = df.groupby("NIST Function")["Risk Name"].count()
-        dist["Risk Count"] = (
-            dist["NIST Function"].map(risk_counts).fillna(0).astype(int)
+    # ---------- 1) find the company-category column ----------
+    if findings_df is None:
+        findings_df = pd.DataFrame()
+    type_col = None
+    for c in type_col_candidates:
+        if c in findings_df.columns:
+            type_col = c
+            break
+
+    func_counts = {}
+
+    # ---------- 2..3) category -> CSF controls -> Functions ----------
+    if type_col and not findings_df.empty:
+        freq = (
+            findings_df[type_col]
+            .dropna()
+            .astype(str)
+            .value_counts()
+            .rename_axis("company_category")
+            .reset_index(name="count")
         )
-        risk_list = df.groupby("NIST Function")["Risk Name"].apply(
-            lambda x: ", ".join(x)
+        for _, r in freq.iterrows():
+            company_cat = r["company_category"]
+            n = int(r["count"])
+            codes = CATEGORY_TO_CSF.get(company_cat, [])
+            for code in codes:
+                fn = get_function_from_code_or_ref(code)  # e.g., "ID"
+                if not fn:
+                    continue
+                func_counts[fn] = func_counts.get(fn, 0) + n
+
+    # ---------- 4) add GV rows from internal API ----------
+    if internal_gv_df is not None and not internal_gv_df.empty:
+        # We count each GV row as +1 to GV
+        if "control_ref" in internal_gv_df.columns:
+            gv_n = (
+                internal_gv_df["control_ref"]
+                .astype(str)
+                .str.upper()
+                .str.startswith("GV.")
+                .sum()
+            )
+            if gv_n:
+                func_counts["GV"] = func_counts.get("GV", 0) + int(gv_n)
+
+    # If nothing to show
+    if not func_counts:
+        return (
+            alt.Chart(pd.DataFrame({"msg": ["No data for function distribution"]}))
+            .mark_text()
+            .encode(text="msg")
         )
-        dist["Risks"] = dist["NIST Function"].map(risk_list).fillna("None")
-    else:
-        dist[["Percentage", "Risk Count", "Risks"]] = [0, 0, "None"]
 
-    dist["BarValue"] = dist["Percentage"].apply(lambda x: 0.1 if x == 0 else x)
+    # ---------- 5) turn into percentages ----------
+    df = pd.DataFrame([{"function": k, "count": v} for k, v in func_counts.items()])
+    total = df["count"].sum()
+    df["percent"] = (df["count"] / total * 100).round(1)
+    df["function_full"] = df["function"].map(lambda f: CSF_FUNCTION_FULL.get(f, f))
 
-    base = alt.Chart(dist)
-    bars = base.mark_bar(color="skyblue").encode(
-        x=alt.X("NIST Function", sort=None),
-        y=alt.Y("BarValue", scale=alt.Scale(domain=[0, 100]), title="Score"),
-        tooltip=["NIST Function", "Percentage", "Risk Count", "Risks"],
+    # Sort by percent descending
+    df = df.sort_values("percent", ascending=False).reset_index(drop=True)
+
+    # ---------- Chart ----------
+    base = alt.Chart(df)
+    bars = base.mark_bar().encode(
+        x=alt.X("function_full:N", title="NIST CSF Function", sort=None),
+        y=alt.Y("percent:Q", title="Percent of total (0–100)"),
+        tooltip=[
+            alt.Tooltip("function_full:N", title="Function"),
+            alt.Tooltip("function:N", title="Code"),
+            alt.Tooltip("count:Q", title="Count"),
+            alt.Tooltip("percent:Q", title="Percent", format=".1f"),
+        ],
     )
-    hover = base.mark_point(size=200, opacity=0).encode(
-        x="NIST Function",
-        y="BarValue",
-        tooltip=["NIST Function", "Percentage", "Risk Count", "Risks"],
-    )
-    return bars + hover
+    return bars
 
 
-def altair_individual_risk_chart(df):
-    """Individual Risk Chart (each risk and its score)."""
-    df = df.copy()
-    df["Original Score"] = df["Score"]
-    df["BarValue"] = df["Score"].apply(lambda x: 0.1 if x == 0 else x)
+def company_category_scores_chart(
+    df,
+    title: str = "Risk Graph",
+    height_per_bar: int = 70,  # total row height
+    bar_size: int = 40,  # ⬅ make bars thicker/higher
+    label_padding: int = 20,  # ⬅ add gap between names & bars
+):
+    if df is None or isinstance(df, (dict, list)):
+        df = pd.DataFrame(df)
+    if not isinstance(df, pd.DataFrame) or df.empty:
+        return None
 
-    return (
+    df = df.rename(columns={c: c.capitalize() for c in df.columns})
+    if (
+        "Category" not in df
+        or "Category_score" not in df
+        and "Category_Score" not in df
+    ):
+        return None
+
+    score_col = "Category_score" if "Category_score" in df else "Score"
+    df["Score"] = pd.to_numeric(df[score_col], errors="coerce").fillna(0)
+    df = df[["Category", "Score"]].sort_values("Score", ascending=True)
+
+    bar_height = max(height_per_bar * len(df), 200)
+
+    chart = (
         alt.Chart(df)
-        .mark_bar()
+        .mark_bar(size=bar_size, opacity=0.7, clip=True)
         .encode(
-            x=alt.X("BarValue", scale=alt.Scale(domain=[0, 100]), title="Score"),
-            y=alt.Y("Risk Name", sort="-x"),
-            color=alt.Color(
-                "BarValue", scale=alt.Scale(domain=[0, 100], range=["green", "red"])
+            x=alt.X("Score:Q", scale=alt.Scale(domain=[0, 100]), title="Score"),
+            y=alt.Y(
+                "Category:N",
+                sort="-x",
+                axis=alt.Axis(labelPadding=label_padding),
             ),
-            tooltip=["Risk Name", alt.Tooltip("Original Score", title="Score")],
+            tooltip=["Category", alt.Tooltip("Score:Q", format=".1f")],
         )
+        .properties(title=title, height=bar_height)
     )
-
-
-def altair_control_maturity_chart(df, target_score=20):
-    """Control Maturity (average score by NIST Function)."""
-    df["Score"] = pd.to_numeric(df["Score"], errors="coerce")
-
-    avg_scores = (
-        df.groupby("NIST Function", as_index=False)["Score"]
-        .mean()
-        .rename(columns={"Score": "Avg Score"})
-    )
-    avg_scores["BarValue"] = avg_scores["Avg Score"].apply(
-        lambda x: 0.1 if x == 0 else x
-    )
-
-    tooltip_data = (
-        df.groupby("NIST Function", as_index=False)
-        .agg({"Risk Name": lambda x: ", ".join(x), "Score": "count"})
-        .rename(columns={"Risk Name": "Risks", "Score": "Risk Count"})
-    )
-
-    avg_scores = avg_scores.merge(tooltip_data, on="NIST Function", how="left").fillna(
-        {"Risks": "None", "Risk Count": 0}
-    )
-
-    base = alt.Chart(avg_scores)
-    bars = base.mark_bar(color="skyblue").encode(
-        x=alt.X("NIST Function", sort=None),
-        y=alt.Y("BarValue", scale=alt.Scale(domain=[0, 100]), title="Score"),
-        tooltip=["NIST Function", "Avg Score", "Risk Count", "Risks"],
-    )
-    hover = base.mark_point(size=200, opacity=0).encode(
-        x="NIST Function",
-        y="BarValue",
-        tooltip=["NIST Function", "Avg Score", "Risk Count", "Risks"],
-    )
-    target = (
-        alt.Chart()
-        .mark_rule(color="red", strokeDash=[6, 3])
-        .encode(y=alt.datum(target_score))
-    )
-
-    return bars + hover + target
+    return chart
