@@ -2,16 +2,17 @@
 # -----------------------------------------------------------------------------
 # Small, API-agnostic helpers:
 # - CATEGORY_NAMES: fixed category list used across the app
-# - extract_number: best-effort numeric extractor from flexible payloads
 # - to_df: normalize "anything" into a pandas DataFrame
 # - stringify_nested: stringify dict/list cells so Streamlit can display them
+# - summarize_csf_for_category / get_company_category_scores_df: data shaping
 # -----------------------------------------------------------------------------
-
 import json
 import pandas as pd
 from typing import Any
 
-# Central single source of truth for categories (used by UI + services)
+# ---------------------------------------------------------------------
+# Categories used by the UI & services (API requires explicit category)
+# ---------------------------------------------------------------------
 CATEGORY_NAMES = [
     "Attack Surface",
     "Vulnerability Exposure",
@@ -21,34 +22,12 @@ CATEGORY_NAMES = [
     "Email Security",
 ]
 
-CATEGORY_TO_CSF = {
-    "Attack Surface": ["ID.AM", "ID.RA", "DE.CM", "PR.PS"],
-    "Vulnerability Exposure": ["PR.PS", "ID.RA", "DE.CM", "RS.MI"],
-    "IP Reputation & Threats": ["DE.CM", "DE.AE", "RS.AN", "RS.MI"],
-    "Web Security Posture": ["PR.PS", "PR.DS", "DE.CM"],
-    "Leakage & Breach History": ["ID.RA", "DE.AE", "RS.CO", "RC.RP"],
-    "Email Security": ["PR.PS", "PR.AT", "DE.CM", "RS.MI"],
-}
 
-CSF_FUNCTION_FULL = {
-    "GV": "Govern",
-    "ID": "Identify",
-    "PR": "Protect",
-    "DE": "Detect",
-    "RS": "Respond",
-    "RC": "Recover",
-}
-
-
+# ---------------------------------------------------------------------
+# General helpers
+# ---------------------------------------------------------------------
 def extract_number(x: Any):
-    """
-    Try to turn an input into a float.
-    Works for:
-      - ints/floats
-      - numeric strings (e.g., "5.33")
-      - dicts with common keys ('score', 'gpa', etc.)
-    Returns: float or None.
-    """
+    """Best-effort numeric extractor from flexible payloads."""
     if x is None:
         return None
     if isinstance(x, (int, float)):
@@ -79,13 +58,7 @@ def extract_number(x: Any):
 
 
 def to_df(obj: Any) -> pd.DataFrame:
-    """
-    Convert many shapes to a DataFrame:
-      - list[dict] -> DataFrame
-      - list[scalar] -> single 'Value' column
-      - dict -> json_normalize (fallback to key/value rows)
-      - scalar -> single-row 'Value'
-    """
+    """Convert many shapes to a DataFrame."""
     if obj is None:
         return pd.DataFrame()
     if isinstance(obj, list):
@@ -111,108 +84,52 @@ def to_df(obj: Any) -> pd.DataFrame:
 
 def stringify_nested(df: pd.DataFrame) -> pd.DataFrame:
     """
-    For display only:
-    - Turn dict/list cells into compact JSON strings (so Streamlit can render).
-    - Keep numeric columns numeric wherever possible.
+    Display helper:
+    - Turn dict/list cells into compact JSON strings.
+    - Keep numerics numeric; cast non-numeric to str.
+    (Works on a copy to avoid SettingWithCopy warnings.)
     """
-    if df.empty:
+    if df is None or df.empty:
         return df
-
+    df = df.copy()
     # stringify nested objects
     for c in df.columns:
         if df[c].apply(lambda x: isinstance(x, (dict, list))).any():
-            df[c] = df[c].apply(lambda x: json.dumps(x, ensure_ascii=False))
-
-    # keep numerics numeric; fall back to strings for non-numeric
+            df.loc[:, c] = df[c].apply(lambda x: json.dumps(x, ensure_ascii=False))
+    # keep numerics numeric; cast others to str
     for c in df.columns:
         try:
             pd.to_numeric(df[c].dropna(), errors="raise")
         except Exception:
-            df[c] = df[c].astype(str)
+            df.loc[:, c] = df[c].astype(str)
     return df
 
 
-def cmm_to_percent(rating, max_rating: float = 5.0):
-    """
-    Convert a CMM rating (e.g., 0..5) to a 0..100 Score.
-    Returns a float (0..100) or None if rating is missing/invalid.
-    """
-    try:
-        r = float(rating)
-        if max_rating <= 0:
-            return None
-        return (r / max_rating) * 100.0
-    except Exception:
-        return None
-
-
-def extract_function(csf_code: str) -> str:
-    """Return the first 2 letters (Function) from a CSF code like 'ID.AM'."""
-    try:
-        return csf_code.split(".")[0]  # 'ID' part
-    except Exception:
-        return ""
-
-
-def extract_category(csf_code: str) -> str:
-    """Return the category part from a CSF code like 'ID.AM'."""
-    try:
-        return csf_code.split(".")[1]  # 'AM' part
-    except Exception:
-        return ""
-
-
-def csf_split(code: str) -> tuple[str, str]:
-    """'ID.AM' → ('ID', 'AM'). Safe for malformed inputs."""
-    try:
-        fn, cat = code.split(".")
-        return fn.strip(), cat.strip()
-    except Exception:
-        return "", ""
-
-
 def get_function_from_code_or_ref(s: str) -> str:
+    """Return CSF function code from a control or GV ref."""
     if not s:
         return ""
     s = str(s).strip()
-    # If it looks like "XX.YY" (CSF control), take the part before the dot
     if "." in s and len(s.split(".", 1)[0]) == 2:
-        return s.split(".", 1)[0].upper()
-    # If it looks like "GV.OC-02", take the part before the dot as well
+        return s.split(".", 1)[0].upper()  # 'ID' from 'ID.AM' or 'GV' from 'GV.OC-01'
     if s.upper().startswith("GV."):
         return "GV"
-    # fallback: first two letters if they match a known function
     prefix = s[:2].upper()
     return prefix if prefix in {"GV", "ID", "PR", "DE", "RS", "RC"} else ""
 
 
-# Keep this slim: return CSF controls only (semicolon-joined)
-def summarize_csf_for_category(category: str) -> dict:
-    codes = CATEGORY_TO_CSF.get(str(category).strip(), [])
-    return {"csf_controls": "; ".join(codes)}
-
-
 def get_company_category_scores_df(company_id) -> pd.DataFrame:
-    """
-    Fetch per-category scores for a company using get_category_gpa().
-    Returns a DataFrame with columns: Category, category_score, category_gpa.
-    """
-    # local import to avoid circulars
-    from api import get_category_gpa
-
-    # uses: CATEGORY_NAMES, to_df (already in helpers.py)
+    """Fetch per-category scores for a company using get_category_gpa()."""
+    from api import get_category_gpa  # local import to avoid circulars
 
     rows = []
     for cat in CATEGORY_NAMES:
         label, score, gpa = cat, None, None
-
-        # Call API (shape can vary: dict / list / df)
         try:
             payload = get_category_gpa(company_id, cat)
         except Exception:
             payload = None
 
-        # Dict path
         if isinstance(payload, dict):
             label = payload.get("Category") or payload.get("category") or label
             score = (
@@ -222,7 +139,6 @@ def get_company_category_scores_df(company_id) -> pd.DataFrame:
             )
             gpa = payload.get("category_gpa") or payload.get("gpa")
 
-        # DataFrame-like path
         try:
             dfp = to_df(payload)
         except Exception:
@@ -246,7 +162,6 @@ def get_company_category_scores_df(company_id) -> pd.DataFrame:
             elif "gpa" in dfp.columns:
                 gpa = dfp["gpa"].iloc[0]
 
-        # Coerce
         try:
             score = float(score)
         except Exception:
