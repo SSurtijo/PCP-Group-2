@@ -105,19 +105,6 @@ def stringify_nested(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def get_function_from_code_or_ref(s: str) -> str:
-    """Return CSF function code from a control or GV ref."""
-    if not s:
-        return ""
-    s = str(s).strip()
-    if "." in s and len(s.split(".", 1)[0]) == 2:
-        return s.split(".", 1)[0].upper()  # 'ID' from 'ID.AM' or 'GV' from 'GV.OC-01'
-    if s.upper().startswith("GV."):
-        return "GV"
-    prefix = s[:2].upper()
-    return prefix if prefix in {"GV", "ID", "PR", "DE", "RS", "RC"} else ""
-
-
 def get_company_category_scores_df(company_id) -> pd.DataFrame:
     """Fetch per-category scores for a company using get_category_gpa()."""
     from api import get_category_gpa  # local import to avoid circulars

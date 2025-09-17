@@ -1,71 +1,112 @@
-"""
-NIST CSF Helper Functions
-All summarization, validation, and lookups.
-"""
+# nist/nist_helpers.py
+from __future__ import annotations
+from typing import Iterable
 
 from .nist_mappings import (
-    FUNCTION_IDENTIFIER_TO_FUNCTION,
-    FUNCTION_TO_CONTROLS,
-    CATEGORY_TO_FUNCTION_IDENTIFIERS,
-    CSF_FUNCTION_FULL,
+    CSF_L1_FUNCTION_FULL,
+    FUNCTION_L1_IDENTIFIER_TO_FUNCTION_L2,
+    FUNCTION_L2_TO_CONTROLS,
+    EXTERNAL_FINDINGS_TO_CONTROLS,
 )
 
 
-def _function_name_from_identifier(fid: str) -> str | None:
-    return FUNCTION_IDENTIFIER_TO_FUNCTION.get(str(fid).strip().upper())
+def _norm_ref(s: str) -> str:
+    if not s:
+        return ""
+    s = str(s).upper().strip()
+    if "-" in s:
+        prefix, tail = s.split("-", 1)
+        prefix = prefix.replace("_", ".").replace("-", ".")
+        while ".." in prefix:
+            prefix = prefix.replace("..", ".")
+        tail = tail.strip()
+        if tail.isdigit():
+            tail = tail.zfill(2)
+        return f"{prefix}-{tail}"
+    s2 = s.replace("_", ".").replace("-", ".")
+    while ".." in s2:
+        s2 = s2.replace("..", ".")
+    parts = [p for p in s2.split(".") if p]
+    if len(parts) >= 3 and parts[2].isdigit():
+        return f"{parts[0]}.{parts[1]}-{parts[2].zfill(2)}"
+    return s
 
 
-def _controls_from_function_name(fname: str) -> list[str]:
-    return list(FUNCTION_TO_CONTROLS.get(str(fname).strip(), []))
+def _prefix(x: str) -> str:
+    if not x:
+        return ""
+    x = str(x).upper().strip()
+    if "-" in x:
+        x = x.split("-", 1)[0]
+    x = x.replace("_", ".").replace("-", ".")
+    while ".." in x:
+        x = x.replace("..", ".")
+    parts = [p for p in x.split(".") if p]
+    if len(parts) >= 2:
+        return f"{parts[0]}.{parts[1]}"
+    return parts[0] if parts else ""
 
 
-def build_category_to_controls() -> dict[str, list[str]]:
+def controls_for_l2(l2_name: str) -> list[str]:
+    return [_norm_ref(c) for c in FUNCTION_L2_TO_CONTROLS.get(str(l2_name).strip(), [])]
+
+
+def controls_for_finding(finding: str) -> list[str]:
+    return [
+        _norm_ref(c)
+        for c in EXTERNAL_FINDINGS_TO_CONTROLS.get(str(finding).strip(), [])
+    ]
+
+
+def findings_for_prefix(prefix: str) -> list[str]:
+    p = _prefix(prefix)
+    outs = []
+    for finding, ctrls in EXTERNAL_FINDINGS_TO_CONTROLS.items():
+        for c in ctrls:
+            if _prefix(_norm_ref(c)) == p:
+                outs.append(finding)
+                break
+    return sorted(set(outs))
+
+
+def findings_for_l2(l2_name: str) -> list[str]:
+    fs = set()
+    for c in controls_for_l2(l2_name):
+        fs.update(findings_for_prefix(c))
+    return sorted(fs)
+
+
+def prefixes_for_l2(l2_name: str) -> list[str]:
+    return sorted({_prefix(c) for c in controls_for_l2(l2_name)})
+
+
+# Back-compat / simple external->controls view used by charts
+def build_category_to_csf() -> dict[str, list[str]]:
+    # For each external finding, return its mapped control identifiers (normalized)
+    return {k: controls_for_finding(k) for k in EXTERNAL_FINDINGS_TO_CONTROLS.keys()}
+
+
+CATEGORY_TO_CSF = build_category_to_csf()
+
+
+def summarize_csf_for_category(category: str) -> dict:
     """
-    Category → Function Identifiers → Function Names → Controls
+    Compatibility shim used by company_tab.py.
+    Returns a dict with a joined string of NIST CSF identifiers for the external finding.
     """
-    out: dict[str, list[str]] = {}
-    for cat, idents in CATEGORY_TO_FUNCTION_IDENTIFIERS.items():
-        controls: list[str] = []
-        for fid in idents:
-            fname = _function_name_from_identifier(fid)
-            if not fname:
-                continue
-            controls.extend(_controls_from_function_name(fname))
-        out[cat] = sorted(set(controls))
-    return out
-
-
-# Derived
-CATEGORY_TO_CONTROLS = build_category_to_controls()
-CATEGORY_TO_CSF = CATEGORY_TO_CONTROLS  # back-compat alias
+    cat = str(category).strip()
+    fids = EXTERNAL_FINDINGS_TO_CONTROLS.get(cat, [])
+    return {"nist_csf_identifiers": ", ".join(fids)}
 
 
 def get_functions_for_category(
     category: str, return_kind: str = "identifiers"
 ) -> list[str]:
-    ids = CATEGORY_TO_FUNCTION_IDENTIFIERS.get(str(category).strip(), [])
+    """
+    If someone still calls this, return the L1 identifiers for the external finding.
+    Set return_kind="names" to map to L2 names via FUNCTION_L1_IDENTIFIER_TO_FUNCTION_L2.
+    """
+    ids = EXTERNAL_FINDINGS_TO_CONTROLS.get(str(category).strip(), [])
     if return_kind == "names":
-        return [FUNCTION_IDENTIFIER_TO_FUNCTION.get(fid, fid) for fid in ids]
+        return [FUNCTION_L1_IDENTIFIER_TO_FUNCTION_L2.get(fid, fid) for fid in ids]
     return list(ids)
-
-
-def get_function_from_code_or_ref(s: str) -> str:
-    """Return CSF function code from a control or GV ref."""
-    if not s:
-        return ""
-    s = str(s).strip()
-    if "." in s and len(s.split(".", 1)[0]) == 2:
-        return s.split(".", 1)[0].upper()
-    if s.upper().startswith("GV."):
-        return "GV"
-    prefix = s[:2].upper()
-    return prefix if prefix in {"GV", "ID", "PR", "DE", "RS", "RC"} else ""
-
-
-def summarize_csf_for_category(category: str) -> dict:
-    """
-    Return NIST CSF identifiers for a given category, joined string.
-    """
-    cat = str(category).strip()
-    fids = CATEGORY_TO_FUNCTION_IDENTIFIERS.get(cat, [])
-    return {"nist_csf_identifiers": ", ".join(fids)}

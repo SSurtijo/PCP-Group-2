@@ -14,6 +14,7 @@ from api import (
     get_category_gpa,
     get_findings_by_category,
 )
+from charts.charts_helpers import _norm_ref, _rating, detect_control_ref_col
 
 
 # ------------------------------- Basic pass-through fetchers ------------------
@@ -218,3 +219,22 @@ def filter_domain_findings_original(
                 df = df[s <= pd.to_datetime(end_date, errors="coerce")]
 
     return df
+
+
+def normalize_internal_scan_rows(rows: list[dict]) -> pd.DataFrame:
+    """
+    Convert raw internal scan rows into a normalized DataFrame with:
+        - control_ref_norm
+        - rating_val
+    This keeps charts decoupled from API payload shapes.
+    """
+    df = pd.DataFrame(rows or [])
+    if df.empty:
+        return df
+    ctrl_col = detect_control_ref_col(df)
+    if not ctrl_col:
+        return pd.DataFrame(columns=["control_ref_norm", "rating_val"])
+    df = df.copy()
+    df["control_ref_norm"] = df[ctrl_col].apply(_norm_ref)
+    df["rating_val"] = df.apply(_rating, axis=1)
+    return df.dropna(subset=["control_ref_norm", "rating_val"])

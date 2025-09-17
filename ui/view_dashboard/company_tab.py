@@ -9,7 +9,7 @@ from helpers import (
 )
 from services import company_summary
 from api import get_category_gpa
-from charts import company_category_scores_chart
+from charts.charts_company import company_category_scores_chart
 from nist.nist_helpers import summarize_csf_for_category
 
 
@@ -86,14 +86,12 @@ def render_company_tab(companies_payload, selected_company_id, company_domains):
                 df_all = pd.concat(rows, ignore_index=True)
                 if "category" in df_all.columns and "Category" in df_all.columns:
                     df_all.drop(columns=["category"], inplace=True, errors="ignore")
-                # ... after df_all is constructed ...
                 if "Category" in df_all.columns and not df_all.empty:
                     nist_ids = df_all["Category"].apply(
                         lambda cat: summarize_csf_for_category(cat)[
                             "nist_csf_identifiers"
                         ]
                     )
-                    # insert right after Category column
                     df_all.insert(
                         df_all.columns.get_loc("Category") + 1,
                         "nist_csf_identifiers",
@@ -109,11 +107,10 @@ def render_company_tab(companies_payload, selected_company_id, company_domains):
 
     # Category Graph
     with st.expander("Category Graph", expanded=True):
-        # Sort control
         sort_label = st.selectbox(
             "Sort by",
             ["A → Z (Category)", "Score: High → Low", "Score: Low → High"],
-            index=1,  # default to High → Low
+            index=1,
             key="category_graph_sort",
         )
         sort_mode = {
@@ -128,7 +125,7 @@ def render_company_tab(companies_payload, selected_company_id, company_domains):
             height_per_bar=80,
             bar_size=45,
             label_padding=30,
-            sort_mode=sort_mode,  # ← NEW
+            sort_mode=sort_mode,
         )
         if chart is None:
             st.info("No category scores available.")

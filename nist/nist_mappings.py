@@ -1,5 +1,41 @@
-FUNCTION_TO_CONTROLS = {
-    # Governance (GV.*)
+# ---- CSF function names (Level 1) ----
+CSF_L1_FUNCTION_FULL = {
+    "GV": "Govern",
+    "ID": "Identify",
+    "PR": "Protect",
+    "DE": "Detect",
+    "RS": "Respond",
+    "RC": "Recover",
+}
+
+# ---- Function Identifier → Function Name (L1→L2) ----
+FUNCTION_L1_IDENTIFIER_TO_FUNCTION_L2 = {
+    "GV.OC": "Organizational Context",
+    "GV.OV": "Oversight",
+    "GV.PO": "Policy",
+    "GV.RM": "Risk Management Strategy",
+    "GV.RR": "Roles, Responsibilities and Authorities",
+    "GV.SC": "Supply Chain Risk Management",
+    "ID.AM": "Asset Management",
+    "ID.RA": "Risk Assessment",
+    "ID.IM": "Improvement",
+    "PR.AA": "Identity & Access Control",
+    "PR.AT": "Awareness & Training",
+    "PR.DS": "Data Security",
+    "PR.PS": "Platform Security",
+    "PR.IR": "Technology Infrastructure Resilience",
+    "DE.CM": "Continuous Monitoring",
+    "DE.AE": "Adverse Event Analysis",
+    "RS.MA": "Incident Management",
+    "RS.AN": "Incident Analysis",
+    "RS.CO": "Incident Response & Reporting",
+    "RS.MI": "Incident Mitigation",
+    "RC.RP": "Incident Recovery Plan Execution",
+    "RC.CO": "Incident Recovery Communication",
+}
+
+# ---- Function (L2) → Controls ----
+FUNCTION_L2_TO_CONTROLS = {
     "Organizational Context": ["GV.OC-02", "GV.OC-03", "GV.OC-04", "GV.OC-05"],
     "Oversight": ["GV.OV-01", "GV.OV-02", "GV.OV-03"],
     "Policy": ["GV.PO-01", "GV.PO-02"],
@@ -30,7 +66,6 @@ FUNCTION_TO_CONTROLS = {
         "GV.SC-09",
         "GV.SC-10",
     ],
-    # Identify (ID.*)
     "Asset Management": [
         "ID.AM-01",
         "ID.AM-02",
@@ -53,7 +88,6 @@ FUNCTION_TO_CONTROLS = {
         "ID.RA-10",
     ],
     "Improvement": ["ID.IM-01", "ID.IM-02", "ID.IM-03", "ID.IM-04"],
-    # Protect (PR.*)
     "Identity & Access Control": [
         "PR.AA-01",
         "PR.AA-02",
@@ -78,7 +112,6 @@ FUNCTION_TO_CONTROLS = {
         "PR.IR-03",
         "PR.IR-04",
     ],
-    # Detect (DE.*)
     "Continuous Monitoring": [
         "DE.CM-01",
         "DE.CM-02",
@@ -94,12 +127,10 @@ FUNCTION_TO_CONTROLS = {
         "DE.AE-07",
         "DE.AE-08",
     ],
-    # Respond (RS.*)
     "Incident Management": ["RS.MA-01", "RS.MA-02", "RS.MA-03", "RS.MA-04", "RS.MA-05"],
     "Incident Analysis": ["RS.AN-03", "RS.AN-06", "RS.AN-07", "RS.AN-08"],
     "Incident Response & Reporting": ["RS.CO-02", "RS.CO-03"],
     "Incident Mitigation": ["RS.MI-01", "RS.MI-02"],
-    # Recover (RC.*)
     "Incident Recovery Plan Execution": [
         "RC.RP-01",
         "RC.RP-02",
@@ -111,52 +142,12 @@ FUNCTION_TO_CONTROLS = {
     "Incident Recovery Communication": ["RC.CO-03", "RC.CO-04"],
 }
 
-FUNCTION_IDENTIFIER_TO_FUNCTION = {
-    # Govern (GV.*)
-    "GV.OC": "Organizational Context",
-    "GV.OV": "Oversight",
-    "GV.PO": "Policy",
-    "GV.RM": "Risk Management Strategy",
-    "GV.RR": "Roles, Responsibilities and Authorities",
-    "GV.SC": "Supply Chain Risk Management",
-    # Identify (ID.*)
-    "ID.AM": "Asset Management",
-    "ID.RA": "Risk Assessment",
-    "ID.IM": "Improvement",
-    # Protect (PR.*)
-    "PR.AA": "Identity & Access Control",
-    "PR.AT": "Awareness & Training",
-    "PR.DS": "Data Security",
-    "PR.PS": "Platform Security",
-    "PR.IR": "Technology Infrastructure Resilience",
-    # Detect (DE.*)
-    "DE.CM": "Continuous Monitoring",
-    "DE.AE": "Adverse Event Analysis",
-    # Respond (RS.*)
-    "RS.MA": "Incident Management",
-    "RS.AN": "Incident Analysis",
-    "RS.CO": "Incident Response & Reporting",
-    "RS.MI": "Incident Mitigation",
-    # Recover (RC.*)
-    "RC.RP": "Incident Recovery Plan Execution",
-    "RC.CO": "Incident Recovery Communication",
-}
-
-# Category -> Function Identifiers (identifiers, not names)
-CATEGORY_TO_FUNCTION_IDENTIFIERS = {
-    "Attack Surface": ["ID.AM", "PR.PS", "DE.CM"],
-    "Vulnerability Exposure": ["ID.RA", "PR.PS", "PR.DS"],
-    "IP Reputation & Threats": ["DE.CM", "DE.AE", "RS.MA"],
-    "Web Security Posture": ["PR.PS", "PR.DS", "PR.IR"],
-    "Leakage & Breach History": ["PR.DS", "DE.AE", "RS.CO", "RC.CO"],
-    "Email Security": ["PR.AA", "PR.DS", "DE.CM"],
-}
-
-CSF_FUNCTION_FULL = {
-    "GV": "Govern",
-    "ID": "Identify",
-    "PR": "Protect",
-    "DE": "Detect",
-    "RS": "Respond",
-    "RC": "Recover",
+# ---- External Findings → Controls (per your remap) ----
+EXTERNAL_FINDINGS_TO_CONTROLS = {
+    "Attack Surface": ["ID.AM-01", "ID.RA-01"],
+    "Vulnerability Exposure": ["PR.PS-01", "DE.CM-01"],
+    "IP Reputation & Threats": ["DE.CM-02", "DE.AE-02"],
+    "Web Security Posture": ["PR.PS-02", "PR.DS-01"],
+    "Leakage & Breach History": ["RS.AN-03", "RC.RP-01"],
+    "Email Security": ["PR.AA-02", "PR.AT-01"],
 }

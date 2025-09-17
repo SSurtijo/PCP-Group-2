@@ -16,6 +16,20 @@ from ui.view_dashboard.nist_finding_tab import render_nist_finding_tab  # remain
 
 st.set_page_config(page_title="Supplier Cyber Risk", layout="wide")
 
+from api import get_internal_scan
+import json
+
+# Debug: print one row from internal scan
+try:
+    sample_rows = get_internal_scan(limit=1)
+    if sample_rows:
+        print("DEBUG internal row:", json.dumps(sample_rows[0], indent=2))
+    else:
+        print("DEBUG: internal scan returned no rows")
+except Exception as e:
+    print("DEBUG: get_internal_scan failed:", e)
+
+
 # Load Companies once
 try:
     companies_payload = companies()
@@ -56,7 +70,8 @@ def show_dashboard(companies_payload):
         domain_items.append({"_id": did, "_name": dname, "_raw": d})
 
     # Tabs (IP tab removed)
-    tab_company, tab_domain, tab_nist = st.tabs(["Company", "Domain", "NIST Findings"])
+    # was: st.tabs(["Company", "Domain", "NIST Findings"])
+    tab_company, tab_domain, tab_nist = st.tabs(["Company", "Domain", "CSF"])
     with tab_company:
         render_company_tab(companies_payload, selected_company_id, company_domains)
     with tab_domain:
