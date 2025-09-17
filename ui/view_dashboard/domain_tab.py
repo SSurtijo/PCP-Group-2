@@ -1,3 +1,4 @@
+# ui/view_dashboard/domain_tab.py
 import streamlit as st
 import pandas as pd
 
@@ -21,6 +22,7 @@ def render_domain_tab(domain_items):
         key="domain_select",
         format_func=lambda x: f"{x['_id']} — {x['_name']}",
     )
+
     try:
         domain_score, findings = domain_overview(selected_domain["_id"])
     except Exception as e:
@@ -31,7 +33,7 @@ def render_domain_tab(domain_items):
     c1.metric("Score", f"{(domain_score or 0):.2f}")
     c2.metric("Total Finding", f"{len(findings)}")
 
-    # Filters + original table
+    # Filters + table (original UX)
     opts, orig_cols = get_domain_filter_options_original(findings)
     with st.expander("Filters", expanded=True):
         f1, f2, f3 = st.columns(3)
@@ -59,10 +61,14 @@ def render_domain_tab(domain_items):
             and pd.to_datetime(from_opt, errors="coerce")
             > pd.to_datetime(to_opt, errors="coerce")
         ):
-            st.warning("'From' date is later than 'To' date — no rows may match.")
-        st.caption(f"Filtered findings: {len(fdf)}")
+            st.warning("'From' date is after 'To' date — showing unfiltered results.")
+            fdf = findings
 
-    if not fdf.empty:
-        st.dataframe(fdf[orig_cols], use_container_width=True)
-    else:
-        st.info("No findings match filters.")
+        df = pd.DataFrame(fdf)
+        if not df.empty:
+            front = [c for c in orig_cols if c in df.columns]
+            rest = [c for c in df.columns if c not in front]
+            df = df[front + rest]
+            st.dataframe(df, use_container_width=True)
+        else:
+            st.info("No findings match the selected filters.")

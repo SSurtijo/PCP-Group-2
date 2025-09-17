@@ -1,29 +1,42 @@
 # services.py
 # -----------------------------------------------------------------------------
-# Service layer — bridges API responses and the UI.
+# Service layer — JSON-first (bundles), CMM/internal stays live. + Domain filters.
 # -----------------------------------------------------------------------------
 from typing import Any, Dict, List, Tuple, Optional
 import pandas as pd
 
 from helpers import CATEGORY_NAMES, extract_number
-from api import (
-    get_companies,
-    get_domains,
-    get_company_risk_grade,
-    get_domain_score,
-    get_category_gpa,
-    get_findings_by_category,
-)
-from charts.charts_helpers import _norm_ref, _rating, detect_control_ref_col
+from json_handler import list_company_bundles, load_company_bundle
+from api import get_internal_scan  # only for CMM/internal
 
 
-# ------------------------------- Basic pass-through fetchers ------------------
+# ------------------------------- Company & domain sources (JSON) --------------
 def companies() -> List[Dict]:
-    return get_companies()
+    bundles = list_company_bundles()
+    out = []
+    for b in bundles:
+        row = {}
+        c = b.get("company") or {}
+        row.update(c)
+        row["company_id"] = b.get("company_id") or c.get("company_id") or c.get("id")
+        row["id"] = row["company_id"]
+        row["company_name"] = (
+            c.get("company_name") or c.get("name") or f"Company {row['company_id']}"
+        )
+        out.append(row)
+    return out
 
 
 def domains() -> List[Dict]:
-    return get_domains()
+    bundles = list_company_bundles()
+    out = []
+    for b in bundles:
+        cid = b.get("company_id")
+        for d in b.get("domains") or []:
+            row = dict(d)  # domain_id, domain_name, domain_score, findings_by_category
+            row["company_id"] = cid
+            out.append(row)
+    return out
 
 
 # ------------------------------- Company select options -----------------------
@@ -51,30 +64,27 @@ def filter_domains_for_company(ds: List[Dict], company_id: Any) -> List[Dict]:
 # ------------------------------- Company summary (KPIs) -----------------------
 def company_summary(company_id: Any) -> Dict[str, str]:
     out = {"grade": "—", "total_gpa": "—", "calculated_date": "—"}
-    try:
-        crg = get_company_risk_grade(company_id) or {}
-        if crg:
-            if crg.get("grade"):
-                out["grade"] = str(crg["grade"])
-            if crg.get("total_gpa") is not None:
-                out["total_gpa"] = f"{float(crg['total_gpa']):.2f}"
-            if crg.get("calculated_date"):
-                out["calculated_date"] = str(crg["calculated_date"])
-    except Exception:
-        pass
+    b = load_company_bundle(company_id) or {}
 
-    # Fallback: average per-category GPAs if total_gpa missing
+    rg = b.get("risk_grade") or {}
+    if rg:
+        if rg.get("grade"):
+            out["grade"] = str(rg["grade"])
+        if rg.get("total_gpa") is not None:
+            try:
+                out["total_gpa"] = f"{float(rg['total_gpa']):.2f}"
+            except Exception:
+                pass
+        if rg.get("calculated_date"):
+            out["calculated_date"] = str(rg["calculated_date"])
+
     if out["total_gpa"] == "—":
         gpas = []
-        for cat in CATEGORY_NAMES:
+        for cat in b.get("categories") or []:
+            v = cat.get("category_gpa")
             try:
-                gp = get_category_gpa(company_id, cat)
-                row = gp[0] if isinstance(gp, list) and gp else gp
-                if isinstance(row, dict):
-                    for k in ("category_gpa", "gpa", "value"):
-                        if row.get(k) is not None:
-                            gpas.append(float(row[k]))
-                            break
+                if v is not None:
+                    gpas.append(float(v))
             except Exception:
                 pass
         if gpas:
@@ -84,157 +94,119 @@ def company_summary(company_id: Any) -> Dict[str, str]:
 
 # ------------------------------- Domain overview ------------------------------
 def domain_overview(domain_id: Any) -> Tuple[Optional[float], List[Dict]]:
-    score = None
-    try:
-        score = extract_number(get_domain_score(domain_id))
-    except Exception:
-        pass
+    bundles = list_company_bundles()
+    for b in bundles:
+        for d in b.get("domains") or []:
+            did = d.get("domain_id") or d.get("id") or d.get("domainId")
+            if str(did) != str(domain_id):
+                continue
 
-    findings: List[Dict] = []
-    for cat in CATEGORY_NAMES:
-        try:
-            data = get_findings_by_category(domain_id, cat)
-            rows = (
-                data
-                if isinstance(data, list)
-                else (
-                    data.get("findings", [])
-                    if isinstance(data, dict) and isinstance(data.get("findings"), list)
-                    else ([data] if isinstance(data, dict) and data else [])
-                )
-            )
-            for r in rows:
-                if isinstance(r, dict):
-                    r.pop("Category", None)
-            findings.extend([r for r in rows if isinstance(r, dict)])
-        except Exception:
-            pass
+            score = d.get("domain_score")
+            try:
+                score = float(score) if score is not None else None
+            except Exception:
+                score = None
 
-    if score is None and findings:
-        vals = []
-        for r in findings:
-            for k in ("Finding Score", "finding_score", "score"):
-                try:
-                    if r.get(k) is not None:
-                        vals.append(float(r[k]))
-                        break
-                except Exception:
-                    pass
-        if vals:
-            score = sum(vals) / len(vals)
+            findings: List[Dict] = []
+            fbc = d.get("findings_by_category") or {}
+            for _, rows in fbc.items():
+                for r in rows or []:
+                    if isinstance(r, dict):
+                        rc = dict(r)
+                        rc.pop("Category", None)
+                        findings.append(rc)
 
-    return score, findings
+            if score is None and findings:
+                vals = []
+                for r in findings:
+                    for k in ("Finding Score", "finding_score", "score"):
+                        try:
+                            if r.get(k) is not None:
+                                vals.append(float(r[k]))
+                                break
+                        except Exception:
+                            pass
+                if vals:
+                    score = sum(vals) / len(vals)
+
+            return score, findings
+    return None, []
 
 
-# ------------------------------- Original-table filters -----------------------
-def _resolve_domain_cols(df: pd.DataFrame) -> Dict[str, Optional[str]]:
-    def pick(cands):
-        for c in cands:
-            if c in df.columns:
-                return c
-        return None
+# ------------------------------- Domain filters (original UX) -----------------
+def _pluck_first(d: Dict, keys: List[str]) -> Optional[str]:
+    for k in keys:
+        if k in d and d[k] not in (None, ""):
+            return str(d[k])
+    return None
 
-    return {
-        "ip": pick(["IP address", "ip_address", "address", "ip", "IP"]),
-        "type": pick(["Type", "finding_type", "Category", "category"]),
-        "level": pick(["Severity level", "severity_level", "severity", "level"]),
-        "fdate": pick(["Found date", "found_date", "date_found", "found", "Date"]),
+
+def get_domain_filter_options_original(findings: List[Dict]):
+    """Collect unique values for IP / Type / Level / Date from findings."""
+    ips, types, levels, dates = set(), set(), set(), set()
+    for r in findings or []:
+        ip = _pluck_first(r, ["ip_address", "ip", "address"])
+        ftype = _pluck_first(r, ["finding_type", "type"])
+        lvl = _pluck_first(r, ["severity_level", "severity", "level"])
+        dt = _pluck_first(r, ["date", "found_date", "scan_date"])
+        if ip:
+            ips.add(ip)
+        if ftype:
+            types.add(ftype)
+        if lvl:
+            levels.add(lvl)
+        if dt:
+            dates.add(dt)
+    opts = {
+        "ips": sorted(ips),
+        "types": sorted(types),
+        "levels": sorted(levels),
+        "dates": sorted(dates),
     }
+    orig_cols = ["ip_address", "finding_type", "severity_level", "date"]
+    return opts, orig_cols
 
 
-def _as_dt(s: pd.Series) -> pd.Series:
+def _date_ok(v: Optional[str], start: Optional[str], end: Optional[str]) -> bool:
+    import pandas as pd
+
+    if not v:
+        return True
     try:
-        return pd.to_datetime(s, errors="coerce", utc=False)
+        vv = pd.to_datetime(v, errors="coerce")
     except Exception:
-        return pd.to_datetime(pd.Series([], dtype=object))
-
-
-def get_domain_filter_options_original(
-    findings: List[Dict],
-) -> Tuple[Dict[str, list], list]:
-    df = pd.DataFrame(findings or [])
-    cols_order = list(df.columns)
-    if df.empty:
-        return {"ips": [], "types": [], "levels": [], "dates": []}, cols_order
-
-    cols = _resolve_domain_cols(df)
-    ips = (
-        sorted(df[cols["ip"]].dropna().astype(str).unique().tolist())
-        if cols["ip"]
-        else []
-    )
-    types = (
-        sorted(df[cols["type"]].dropna().astype(str).unique().tolist())
-        if cols["type"]
-        else []
-    )
-
-    levels = (
-        df[cols["level"]].dropna().astype(str).unique().tolist()
-        if cols["level"]
-        else []
-    )
-    try:
-        levels = sorted(levels, key=lambda x: float(x))
-    except Exception:
-        levels = sorted(levels)
-
-    dates = []
-    if cols["fdate"]:
-        dates = (
-            _as_dt(df[cols["fdate"]]).dropna().dt.strftime("%Y-%m-%d").unique().tolist()
-        )
-        dates = sorted(dates)
-
-    return {"ips": ips, "types": types, "levels": levels, "dates": dates}, cols_order
+        return True
+    if isinstance(start, str) and start != "Any":
+        ss = pd.to_datetime(start, errors="coerce")
+        if pd.notna(ss) and pd.notna(vv) and vv < ss:
+            return False
+    if isinstance(end, str) and end != "Any":
+        ee = pd.to_datetime(end, errors="coerce")
+        if pd.notna(ee) and pd.notna(vv) and vv > ee:
+            return False
+    return True
 
 
 def filter_domain_findings_original(
     findings: List[Dict],
-    ip: Optional[str] = None,
-    ftype: Optional[str] = None,
-    level: Optional[str] = None,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-) -> pd.DataFrame:
-    df = pd.DataFrame(findings or [])
-    if df.empty:
-        return df
-
-    cols = _resolve_domain_cols(df)
-
-    if ip and ip != "All" and cols["ip"]:
-        df = df[df[cols["ip"]].astype(str) == str(ip)]
-    if ftype and ftype != "All" and cols["type"]:
-        df = df[df[cols["type"]].astype(str) == str(ftype)]
-    if level and level != "All" and cols["level"]:
-        df = df[df[cols["level"]].astype(str) == str(level)]
-
-    if (start_date and start_date != "Any") or (end_date and end_date != "Any"):
-        if cols["fdate"]:
-            s = _as_dt(df[cols["fdate"]])
-            if start_date and start_date != "Any":
-                df = df[s >= pd.to_datetime(start_date, errors="coerce")]
-            if end_date and end_date != "Any":
-                df = df[s <= pd.to_datetime(end_date, errors="coerce")]
-
-    return df
-
-
-def normalize_internal_scan_rows(rows: list[dict]) -> pd.DataFrame:
-    """
-    Convert raw internal scan rows into a normalized DataFrame with:
-        - control_ref_norm
-        - rating_val
-    This keeps charts decoupled from API payload shapes.
-    """
-    df = pd.DataFrame(rows or [])
-    if df.empty:
-        return df
-    ctrl_col = detect_control_ref_col(df)
-    if not ctrl_col:
-        return pd.DataFrame(columns=["control_ref_norm", "rating_val"])
-    df = df.copy()
-    df["control_ref_norm"] = df[ctrl_col].apply(_norm_ref)
-    df["rating_val"] = df.apply(_rating, axis=1)
-    return df.dropna(subset=["control_ref_norm", "rating_val"])
+    ip: str = "All",
+    ftype: str = "All",
+    level: str = "All",
+    start_date: str = "Any",
+    end_date: str = "Any",
+) -> List[Dict]:
+    out = []
+    for r in findings or []:
+        ip_ok = (ip == "All") or (r.get("ip_address") == ip or r.get("ip") == ip)
+        type_ok = (ftype == "All") or (
+            r.get("finding_type") == ftype or r.get("type") == ftype
+        )
+        lvl_ok = (level == "All") or (
+            r.get("severity_level") == level
+            or r.get("severity") == level
+            or r.get("level") == level
+        )
+        dt_val = r.get("date") or r.get("found_date") or r.get("scan_date")
+        if ip_ok and type_ok and lvl_ok and _date_ok(dt_val, start_date, end_date):
+            out.append(r)
+    return out

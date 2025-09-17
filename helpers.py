@@ -1,18 +1,11 @@
 # helpers.py
 # -----------------------------------------------------------------------------
-# Small, API-agnostic helpers:
-# - CATEGORY_NAMES: fixed category list used across the app
-# - to_df: normalize "anything" into a pandas DataFrame
-# - stringify_nested: stringify dict/list cells so Streamlit can display them
-# - summarize_csf_for_category / get_company_category_scores_df: data shaping
+# API-agnostic helpers + JSON-backed get_company_category_scores_df
 # -----------------------------------------------------------------------------
 import json
 import pandas as pd
 from typing import Any
 
-# ---------------------------------------------------------------------
-# Categories used by the UI & services (API requires explicit category)
-# ---------------------------------------------------------------------
 CATEGORY_NAMES = [
     "Attack Surface",
     "Vulnerability Exposure",
@@ -23,11 +16,7 @@ CATEGORY_NAMES = [
 ]
 
 
-# ---------------------------------------------------------------------
-# General helpers
-# ---------------------------------------------------------------------
 def extract_number(x: Any):
-    """Best-effort numeric extractor from flexible payloads."""
     if x is None:
         return None
     if isinstance(x, (int, float)):
@@ -58,7 +47,6 @@ def extract_number(x: Any):
 
 
 def to_df(obj: Any) -> pd.DataFrame:
-    """Convert many shapes to a DataFrame."""
     if obj is None:
         return pd.DataFrame()
     if isinstance(obj, list):
@@ -83,20 +71,12 @@ def to_df(obj: Any) -> pd.DataFrame:
 
 
 def stringify_nested(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Display helper:
-    - Turn dict/list cells into compact JSON strings.
-    - Keep numerics numeric; cast non-numeric to str.
-    (Works on a copy to avoid SettingWithCopy warnings.)
-    """
     if df is None or df.empty:
         return df
     df = df.copy()
-    # stringify nested objects
     for c in df.columns:
         if df[c].apply(lambda x: isinstance(x, (dict, list))).any():
             df.loc[:, c] = df[c].apply(lambda x: json.dumps(x, ensure_ascii=False))
-    # keep numerics numeric; cast others to str
     for c in df.columns:
         try:
             pd.to_numeric(df[c].dropna(), errors="raise")
@@ -106,62 +86,30 @@ def stringify_nested(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def get_company_category_scores_df(company_id) -> pd.DataFrame:
-    """Fetch per-category scores for a company using get_category_gpa()."""
-    from api import get_category_gpa  # local import to avoid circulars
+    """
+    Read Category + {category_score, category_gpa} from the per-company bundle.
+    """
+    from json_handler import load_company_bundle  # avoid cycles
 
+    b = load_company_bundle(company_id) or {}
     rows = []
-    for cat in CATEGORY_NAMES:
-        label, score, gpa = cat, None, None
+    for cat in b.get("categories") or []:
+        label = cat.get("Category")
+        score = cat.get("category_score")
+        gpa = cat.get("category_gpa")
         try:
-            payload = get_category_gpa(company_id, cat)
-        except Exception:
-            payload = None
-
-        if isinstance(payload, dict):
-            label = payload.get("Category") or payload.get("category") or label
-            score = (
-                payload.get("category_score")
-                or payload.get("score")
-                or payload.get("value")
-            )
-            gpa = payload.get("category_gpa") or payload.get("gpa")
-
-        try:
-            dfp = to_df(payload)
-        except Exception:
-            dfp = None
-
-        if isinstance(dfp, pd.DataFrame) and not dfp.empty:
-            if "Category" in dfp.columns and pd.notna(dfp["Category"].iloc[0]):
-                label = dfp["Category"].iloc[0]
-            elif "category" in dfp.columns and pd.notna(dfp["category"].iloc[0]):
-                label = dfp["category"].iloc[0]
-
-            if "category_score" in dfp.columns:
-                score = dfp["category_score"].iloc[0]
-            elif "score" in dfp.columns:
-                score = dfp["score"].iloc[0]
-            elif "value" in dfp.columns:
-                score = dfp["value"].iloc[0]
-
-            if "category_gpa" in dfp.columns:
-                gpa = dfp["category_gpa"].iloc[0]
-            elif "gpa" in dfp.columns:
-                gpa = dfp["gpa"].iloc[0]
-
-        try:
-            score = float(score)
+            score = float(score) if score is not None else None
         except Exception:
             score = None
         try:
-            gpa = float(gpa)
+            gpa = float(gpa) if gpa is not None else None
         except Exception:
             gpa = None
-
         rows.append({"Category": label, "category_score": score, "category_gpa": gpa})
 
     out = pd.DataFrame(rows)
-    out["category_score"] = pd.to_numeric(
-        out["category_score"], errors="coerce"
-    ).fillna(0)
+    if not out.empty and "category_score" in out.columns:
+        out["category_score"] = pd.to_numeric(
+            out["category_score"], errors="coerce"
+        ).fillna(0)
     return out

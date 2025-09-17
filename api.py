@@ -114,3 +114,21 @@ def get_internal_scan(limit: int = 200):
 
     payload = r.json()
     return payload.get("items", payload) if isinstance(payload, dict) else payload
+
+
+# -----------------------
+# Optional: trigger bundle rebuild from API layer
+# -----------------------
+def rebuild_all_company_jsons() -> int:
+    """
+    Convenience wrapper to (re)build all company bundles on disk without importing
+    json_handler at module import time (avoids circulars).
+    Returns number of bundles written.
+    """
+    try:
+        from json_handler import build_all_company_bundles
+
+        paths = build_all_company_bundles()
+        return len(paths or [])
+    except Exception:
+        return 0

@@ -177,3 +177,68 @@ def csf_maturity_line_chart(
         .configure_axis(labelColor="white", titleColor="white")
         .configure_title(color="white")
     )
+
+
+# ---------- NEW: build table DF for CSF Controls ----------
+def build_csf_controls_table_df(
+    scores_df: pd.DataFrame,
+    internal_rows: list[dict] | None,
+    company_id,
+) -> pd.DataFrame:
+    """
+    Returns a table with columns:
+      - company_id
+      - category            (external finding)
+      - nist_control        (normalized, e.g., PR.PS-01)
+      - cmm_score           (parsed numeric rating from internal scan)
+
+    Uses the same mapping and parsing logic as the graph.
+    Only includes controls that actually have a rating in the internal data.
+    """
+    if scores_df is None or scores_df.empty:
+        return pd.DataFrame()
+
+    df_ctrl = pd.DataFrame(internal_rows or [])
+    if df_ctrl.empty:
+        return pd.DataFrame()
+
+    ctrl_col = detect_control_ref_col(df_ctrl)
+    if not ctrl_col:
+        return pd.DataFrame()
+
+    df_ctrl = df_ctrl.copy()
+    df_ctrl["control_ref_norm"] = df_ctrl[ctrl_col].apply(_norm_ref)
+    df_ctrl["rating_val"] = df_ctrl.apply(_rating, axis=1)
+    df_ctrl = df_ctrl.dropna(subset=["control_ref_norm", "rating_val"])
+
+    ctrl_index = df_ctrl.set_index("control_ref_norm")["rating_val"]
+
+    # Which categories (findings) to show
+    api_findings = (
+        [str(x).strip() for x in scores_df["Category"].dropna().tolist()]
+        if "Category" in scores_df.columns
+        else []
+    )
+    findings = [f for f in api_findings if f in EXTERNAL_FINDINGS_TO_CONTROLS_NORM]
+    if not findings:
+        findings = [
+            f for f in CATEGORY_NAMES if f in EXTERNAL_FINDINGS_TO_CONTROLS_NORM
+        ]
+
+    rows = []
+    for finding in _ordered_findings(findings):
+        mapped_controls = EXTERNAL_FINDINGS_TO_CONTROLS_NORM.get(finding, [])
+        for c in sorted(mapped_controls):
+            if c not in ctrl_index:
+                # Skip controls that don't have a rating in internal data
+                continue
+            rows.append(
+                {
+                    "company_id": company_id,
+                    "category": finding,
+                    "nist_control": c,
+                    "cmm_score": float(ctrl_index[c]),
+                }
+            )
+
+    return pd.DataFrame(rows)

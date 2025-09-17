@@ -1,0 +1,352 @@
+{
+  "schema_version": 1,
+  "generated_at": "2025-09-17T14:54:41.669877+00:00",
+  "company_id": 1001,
+  "company": {
+    "company_id": 1001,
+    "company_name": "AlphaSec",
+    "domain_name": null,
+    "industry_id": null,
+    "type": "normal",
+    "dashboard_link": null,
+    "country": "US",
+    "scan_status": "active",
+    "insert_date": "2025-07-21"
+  },
+  "risk_grade": {
+    "company_id": 1001,
+    "total_gpa": 2.41,
+    "grade": "C+",
+    "calculated_date": "2025-08-05"
+  },
+  "categories": [
+    {
+      "Category": "Attack Surface",
+      "category_gpa": 1.33,
+      "category_score": 52.0,
+      "aggregated_at": "2025-08-05"
+    },
+    {
+      "Category": "Vulnerability Exposure",
+      "category_gpa": 2.33,
+      "category_score": 68.0,
+      "aggregated_at": "2025-08-05"
+    },
+    {
+      "Category": "IP Reputation & Threats",
+      "category_gpa": 3.9,
+      "category_score": 91.0,
+      "aggregated_at": "2025-08-05"
+    },
+    {
+      "Category": "Web Security Posture",
+      "category_gpa": 2.0,
+      "category_score": 58.0,
+      "aggregated_at": "2025-08-05"
+    },
+    {
+      "Category": "Leakage & Breach History",
+      "category_gpa": 3.8,
+      "category_score": 90.0,
+      "aggregated_at": "2025-08-05"
+    },
+    {
+      "Category": "Email Security",
+      "category_gpa": 3.0,
+      "category_score": 73.0,
+      "aggregated_at": "2025-08-05"
+    }
+  ],
+  "domains": [
+    {
+      "domain_id": 2001,
+      "domain_name": "alphasec1.com",
+      "domain_score": 5.33,
+      "findings_by_category": {
+        "Attack Surface": [
+          {
+            "ip_address": "7.79.183.93",
+            "finding_type": "Attack Surface",
+            "finding_score": 5.14,
+            "severity_level": 2,
+            "found_date": "2025-07-21"
+          },
+          {
+            "ip_address": "16.153.104.214",
+            "finding_type": "Attack Surface",
+            "finding_score": 8.32,
+            "severity_level": 3,
+            "found_date": "2025-07-20"
+          },
+          {
+            "ip_address": "158.13.134.34",
+            "finding_type": "Attack Surface",
+            "finding_score": 7.16,
+            "severity_level": 3,
+            "found_date": "2025-06-23"
+          }
+        ],
+        "Vulnerability Exposure": [
+          {
+            "ip_address": "7.79.183.93",
+            "finding_type": "Vulnerability Exposure",
+            "finding_score": 2.59,
+            "severity_level": 1,
+            "found_date": "2025-05-15"
+          },
+          {
+            "ip_address": "16.153.104.214",
+            "finding_type": "Vulnerability Exposure",
+            "finding_score": 7.66,
+            "severity_level": 3,
+            "found_date": "2025-07-22"
+          },
+          {
+            "ip_address": "158.13.134.34",
+            "finding_type": "Vulnerability Exposure",
+            "finding_score": 6.94,
+            "severity_level": 1,
+            "found_date": "2025-07-15"
+          }
+        ],
+        "IP Reputation & Threats": [
+          {
+            "ip_address": "7.79.183.93",
+            "finding_type": "IP Reputation & Threats",
+            "finding_score": 9.83,
+            "severity_level": 4,
+            "found_date": "2025-08-03"
+          },
+          {
+            "ip_address": "16.153.104.214",
+            "finding_type": "IP Reputation & Threats",
+            "finding_score": 9.92,
+            "severity_level": 4,
+            "found_date": "2025-05-13"
+          },
+          {
+            "ip_address": "158.13.134.34",
+            "finding_type": "IP Reputation & Threats",
+            "finding_score": 3.01,
+            "severity_level": 1,
+            "found_date": "2025-06-13"
+          }
+        ],
+        "Web Security Posture": [
+          {
+            "ip_address": "7.79.183.93",
+            "finding_type": "Web Security Posture",
+            "finding_score": 1.06,
+            "severity_level": 1,
+            "found_date": "2025-07-08"
+          },
+          {
+            "ip_address": "16.153.104.214",
+            "finding_type": "Web Security Posture",
+            "finding_score": 9.04,
+            "severity_level": 4,
+            "found_date": "2025-05-19"
+          },
+          {
+            "ip_address": "158.13.134.34",
+            "finding_type": "Web Security Posture",
+            "finding_score": 1.81,
+            "severity_level": 1,
+            "found_date": "2025-07-15"
+          }
+        ],
+        "Leakage & Breach History": [
+          {
+            "ip_address": "7.79.183.93",
+            "finding_type": "Leakage & Breach History",
+            "finding_score": 5.49,
+            "severity_level": 2,
+            "found_date": "2025-06-19"
+          },
+          {
+            "ip_address": "16.153.104.214",
+            "finding_type": "Leakage & Breach History",
+            "finding_score": 4.7,
+            "severity_level": 2,
+            "found_date": "2025-07-22"
+          },
+          {
+            "ip_address": "158.13.134.34",
+            "finding_type": "Leakage & Breach History",
+            "finding_score": 4.8,
+            "severity_level": 2,
+            "found_date": "2025-05-24"
+          }
+        ],
+        "Email Security": [
+          {
+            "ip_address": "7.79.183.93",
+            "finding_type": "Email Security",
+            "finding_score": 4.71,
+            "severity_level": 2,
+            "found_date": "2025-05-19"
+          },
+          {
+            "ip_address": "16.153.104.214",
+            "finding_type": "Email Security",
+            "finding_score": 1.29,
+            "severity_level": 1,
+            "found_date": "2025-05-14"
+          },
+          {
+            "ip_address": "158.13.134.34",
+            "finding_type": "Email Security",
+            "finding_score": 2.47,
+            "severity_level": 1,
+            "found_date": "2025-05-13"
+          }
+        ]
+      }
+    },
+    {
+      "domain_id": 2002,
+      "domain_name": "alphasec2.com",
+      "domain_score": null,
+      "findings_by_category": {
+        "Attack Surface": [
+          {
+            "ip_address": "212.133.227.195",
+            "finding_type": "Attack Surface",
+            "finding_score": 5.63,
+            "severity_level": 2,
+            "found_date": "2025-06-12"
+          },
+          {
+            "ip_address": "76.133.245.6",
+            "finding_type": "Attack Surface",
+            "finding_score": 6.1,
+            "severity_level": 2,
+            "found_date": "2025-06-27"
+          },
+          {
+            "ip_address": "92.211.247.204",
+            "finding_type": "Attack Surface",
+            "finding_score": 9.8,
+            "severity_level": 4,
+            "found_date": "2025-07-02"
+          }
+        ],
+        "Vulnerability Exposure": [
+          {
+            "ip_address": "212.133.227.195",
+            "finding_type": "Vulnerability Exposure",
+            "finding_score": 7.42,
+            "severity_level": 3,
+            "found_date": "2025-07-16"
+          },
+          {
+            "ip_address": "76.133.245.6",
+            "finding_type": "Vulnerability Exposure",
+            "finding_score": 5.73,
+            "severity_level": 2,
+            "found_date": "2025-06-19"
+          },
+          {
+            "ip_address": "92.211.247.204",
+            "finding_type": "Vulnerability Exposure",
+            "finding_score": 2.41,
+            "severity_level": 1,
+            "found_date": "2025-06-30"
+          }
+        ],
+        "IP Reputation & Threats": [
+          {
+            "ip_address": "212.133.227.195",
+            "finding_type": "IP Reputation & Threats",
+            "finding_score": 1,
+            "severity_level": 1,
+            "found_date": "2025-07-18"
+          },
+          {
+            "ip_address": "76.133.245.6",
+            "finding_type": "IP Reputation & Threats",
+            "finding_score": 8.42,
+            "severity_level": 3,
+            "found_date": "2025-07-21"
+          },
+          {
+            "ip_address": "92.211.247.204",
+            "finding_type": "IP Reputation & Threats",
+            "finding_score": 9.27,
+            "severity_level": 4,
+            "found_date": "2025-06-24"
+          }
+        ],
+        "Web Security Posture": [
+          {
+            "ip_address": "212.133.227.195",
+            "finding_type": "Web Security Posture",
+            "finding_score": 4.11,
+            "severity_level": 2,
+            "found_date": "2025-07-06"
+          },
+          {
+            "ip_address": "76.133.245.6",
+            "finding_type": "Web Security Posture",
+            "finding_score": 9.78,
+            "severity_level": 4,
+            "found_date": "2025-06-26"
+          },
+          {
+            "ip_address": "92.211.247.204",
+            "finding_type": "Web Security Posture",
+            "finding_score": 0.93,
+            "severity_level": 1,
+            "found_date": "2025-07-07"
+          }
+        ],
+        "Leakage & Breach History": [
+          {
+            "ip_address": "212.133.227.195",
+            "finding_type": "Leakage & Breach History",
+            "finding_score": 7.04,
+            "severity_level": 3,
+            "found_date": "2025-07-10"
+          },
+          {
+            "ip_address": "76.133.245.6",
+            "finding_type": "Leakage & Breach History",
+            "finding_score": 9.22,
+            "severity_level": 4,
+            "found_date": "2025-07-15"
+          },
+          {
+            "ip_address": "92.211.247.204",
+            "finding_type": "Leakage & Breach History",
+            "finding_score": 5.19,
+            "severity_level": 2,
+            "found_date": "2025-05-13"
+          }
+        ],
+        "Email Security": [
+          {
+            "ip_address": "212.133.227.195",
+            "finding_type": "Email Security",
+            "finding_score": 6.15,
+            "severity_level": 2,
+            "found_date": "2025-06-02"
+          },
+          {
+            "ip_address": "76.133.245.6",
+            "finding_type": "Email Security",
+            "finding_score": 1.18,
+            "severity_level": 1,
+            "found_date": "2025-06-24"
+          },
+          {
+            "ip_address": "92.211.247.204",
+            "finding_type": "Email Security",
+            "finding_score": 9.58,
+            "severity_level": 4,
+            "found_date": "2025-07-08"
+          }
+        ]
+      }
+    }
+  ]
+}

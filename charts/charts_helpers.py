@@ -128,7 +128,7 @@ def csv_plain(items: Iterable[str]) -> str:
     return ", ".join(sorted(vals)) if vals else "-"
 
 
-def mean(values: Sequence[float]) -> float | float("nan"):
+def mean(values: Sequence[float]) -> float:
     xs = [float(v) for v in values if v is not None and not math.isnan(float(v))]
     return (sum(xs) / len(xs)) if xs else float("nan")
 
