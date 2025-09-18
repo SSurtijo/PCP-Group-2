@@ -15,8 +15,8 @@ from ui.view_dashboard.company_tab import render_company_tab
 from ui.view_dashboard.domain_tab import render_domain_tab
 from ui.view_dashboard.nist_finding_tab import render_nist_finding_tab
 
-# Single refresh call, BEFORE any data/views load (no buttons/inputs)
-from json_handler import build_all_company_bundles
+# Refresh/build JSON bundles for all companies on run (existing behavior)
+from json_handler import build_all_company_bundles, rebuild_company_bundle_for_id
 
 build_all_company_bundles()  # overwrite data/{company_id}_data.json each run
 
@@ -42,6 +42,14 @@ def show_dashboard(companies_payload):
     options, mapping = list_company_options(companies_payload)
     selected_company_label = st.selectbox("Company", options, index=0)
     selected_company_id = mapping.get(selected_company_label)
+
+    # 🔁 COMPANY-SPECIFIC REFRESH (UI-initiated from app.py, BEFORE any function uses company data)
+    if selected_company_id is not None:
+        try:
+            rebuild_company_bundle_for_id(selected_company_id)
+        except Exception as e:
+            # Non-fatal: show a warning but continue with last known JSON
+            st.warning(f"Could not refresh company {selected_company_id}: {e}")
 
     # Domains for this company (from JSON bundles)
     try:
