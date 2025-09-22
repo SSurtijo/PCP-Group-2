@@ -1,0 +1,38 @@
+
+# nist_helpers.py functions
+
+1. controls_for_l2(l2_name)
+- Returns normalized controls for a given L2 domain name.
+- Used in charts, NIST mapping logic, and L2 domain tables
+
+2. controls_for_finding(finding)
+- Returns normalized controls for a given external finding.
+- Used in charts, NIST mapping logic, and CSF graphs
+
+3. findings_for_prefix(prefix_str)
+- Returns findings mapped to a given control prefix.
+- Used in NIST mapping logic and control mapping
+
+4. findings_for_l2(l2_name)
+- Returns findings mapped to a given L2 domain name.
+- Used in NIST mapping logic and L2 domain tables
+
+5. prefixes_for_l2(l2_name)
+- Returns prefixes for controls mapped to a given L2 domain name.
+- Used in NIST mapping logic and control mapping
+
+6. get_function_from_code_or_ref(ref)
+- Returns CSF L1 function code for a control reference.
+- Used in charts, NIST mapping logic, and L2 domain tables
+
+7. build_category_to_csf()
+- Returns mapping of external findings to normalized control identifiers.
+- Used in NIST mapping logic and charts
+
+8. summarize_csf_for_category(category)
+- Returns a dict with joined NIST CSF identifiers for the external finding.
+- Used in ui/view_dashboard/company_tab.py, charts, and NIST mapping logic (for category tables)
+
+9. get_functions_for_category(category, return_kind)
+- Returns L1 identifiers or L2 names for the external finding.
+- Used in NIST mapping logic and charts

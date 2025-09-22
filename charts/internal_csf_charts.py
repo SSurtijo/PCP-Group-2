@@ -1,13 +1,14 @@
-# charts/csf_charts.py
+### internal_csf_charts.py
+# Chart and table functions for internal CSF maturity in PCP project.
+# All functions use strict formatting: file-level header (###), function-level header (#), and step-by-step logic (#) comments.
+
 import altair as alt
 import pandas as pd
 
 from nist.nist_mappings import EXTERNAL_FINDINGS_TO_CONTROLS
 from nist.nist_helpers import controls_for_finding
-from helpers import CATEGORY_NAMES
+from utils.dataframe_utils import CATEGORY_NAMES
 from .charts_helpers import (
-    _norm_ref,
-    _prefix,
     _rating,
     detect_control_ref_col,
     csv_upper,
@@ -15,15 +16,20 @@ from .charts_helpers import (
     mean,
 )
 
+# Import normalization utilities for control references
+from utils.normalization import norm_ref, prefix
+
 # Normalize external mapping up-front
 EXTERNAL_FINDINGS_TO_CONTROLS_NORM = {
-    finding: [_norm_ref(c) for c in ctrls]
+    finding: [norm_ref(c) for c in ctrls]
     for finding, ctrls in EXTERNAL_FINDINGS_TO_CONTROLS.items()
 }
 
 
+# Orders findings by CATEGORY_NAMES if available, else keeps API order.
+# Usage: _ordered_findings(api_findings)
+# Returns: ordered list of findings
 def _ordered_findings(api_findings: list[str]) -> list[str]:
-    # If CATEGORY_NAMES mirrors your preferred order, use it; otherwise keep API order
     if CATEGORY_NAMES:
         wanted = [c for c in CATEGORY_NAMES if c in set(api_findings)]
         if wanted:
@@ -31,8 +37,10 @@ def _ordered_findings(api_findings: list[str]) -> list[str]:
     return api_findings
 
 
+# GPA-only fallback chart (no internal ratings available).
+# Usage: _fallback_chart(scores_df)
+# Returns: Altair chart or None
 def _fallback_chart(scores_df: pd.DataFrame):
-    """GPA-only fallback (no internal ratings available)."""
     gpa_col = next((c for c in ("category_gpa", "gpa") if c in scores_df.columns), None)
     if not gpa_col or "Category" not in scores_df.columns:
         return None
@@ -79,18 +87,12 @@ def _fallback_chart(scores_df: pd.DataFrame):
     )
 
 
+# Line chart of CSF maturity by external findings and mapped controls.
+# Usage: csf_maturity_line_chart(scores_df, internal_rows)
+# Returns: Altair chart or None
 def csf_maturity_line_chart(
     scores_df: pd.DataFrame, internal_rows: list[dict] | None = None
 ):
-    """
-    Plot by EXTERNAL FINDINGS from the API (scores_df["Category"]).
-
-    Tooltip:
-      - Findings                : the finding name (from API)
-      - Findings GPA            : API GPA
-      - Control                 : ALL CAPS, from EXTERNAL_FINDINGS_TO_CONTROLS
-      - Mean CMM                : mean of internal ratings (API) for those mapped controls
-    """
     if scores_df is None or scores_df.empty or "Category" not in scores_df.columns:
         return None
 
@@ -109,7 +111,8 @@ def csf_maturity_line_chart(
         return _fallback_chart(scores_df)
 
     df_ctrl = df_ctrl.copy()
-    df_ctrl["control_ref_norm"] = df_ctrl[ctrl_col].apply(_norm_ref)
+    # Standardize control references using norm_ref
+    df_ctrl["control_ref_norm"] = df_ctrl[ctrl_col].apply(norm_ref)
     df_ctrl["rating_val"] = df_ctrl.apply(_rating, axis=1)
     df_ctrl = df_ctrl.dropna(subset=["control_ref_norm", "rating_val"])
 
@@ -179,22 +182,14 @@ def csf_maturity_line_chart(
     )
 
 
-# ---------- NEW: build table DF for CSF Controls ----------
+# Builds a table of CSF controls and CMM scores for a company.
+# Usage: build_csf_controls_table_df(scores_df, internal_rows, company_id)
+# Returns: DataFrame with columns: company_id, category, nist_control, cmm_score
 def build_csf_controls_table_df(
     scores_df: pd.DataFrame,
     internal_rows: list[dict] | None,
     company_id,
 ) -> pd.DataFrame:
-    """
-    Returns a table with columns:
-      - company_id
-      - category            (external finding)
-      - nist_control        (normalized, e.g., PR.PS-01)
-      - cmm_score           (parsed numeric rating from internal scan)
-
-    Uses the same mapping and parsing logic as the graph.
-    Only includes controls that actually have a rating in the internal data.
-    """
     if scores_df is None or scores_df.empty:
         return pd.DataFrame()
 
@@ -207,7 +202,8 @@ def build_csf_controls_table_df(
         return pd.DataFrame()
 
     df_ctrl = df_ctrl.copy()
-    df_ctrl["control_ref_norm"] = df_ctrl[ctrl_col].apply(_norm_ref)
+    # Standardize control references using norm_ref
+    df_ctrl["control_ref_norm"] = df_ctrl[ctrl_col].apply(norm_ref)
     df_ctrl["rating_val"] = df_ctrl.apply(_rating, axis=1)
     df_ctrl = df_ctrl.dropna(subset=["control_ref_norm", "rating_val"])
 

@@ -1,17 +1,51 @@
-# services.py
-# -----------------------------------------------------------------------------
-# Service layer — JSON-first (bundles), CMM/internal stays live. + Domain filters.
-# -----------------------------------------------------------------------------
+###
+# File: services.py
+# Description: Core service functions for PCP project data access and transformation.
+###
+
 from typing import Any, Dict, List, Tuple, Optional
 import pandas as pd
-
-from helpers import CATEGORY_NAMES, extract_number
+from utils.dataframe_utils import CATEGORY_NAMES, extract_number, domain_overview
 from json_handler import list_company_bundles, load_company_bundle
 from api import get_internal_scan  # only for CMM/internal
 
 
+def get_company_category_scores_df(company_id) -> pd.DataFrame:
+    # Function: get_company_category_scores_df
+    # Description: Reads category scores and GPA from a company's bundle JSON file and returns them as a pandas DataFrame.
+    # Usage: get_company_category_scores_df(company_id)
+    # Returns: pandas DataFrame with category scores and GPA
+    b = load_company_bundle(company_id) or {}
+    rows = []
+    for cat in b.get("categories") or []:
+        label = cat.get("Category")
+        score = cat.get("category_score")
+        gpa = cat.get("category_gpa")
+        try:
+            score = float(score) if score is not None else None
+        except Exception:
+            score = None
+        try:
+            gpa = float(gpa) if gpa is not None else None
+        except Exception:
+            gpa = None
+        rows.append({"Category": label, "category_score": score, "category_gpa": gpa})
+    out = pd.DataFrame(rows)
+    if not out.empty and "category_score" in out.columns:
+        out["category_score"] = pd.to_numeric(
+            out["category_score"], errors="coerce"
+        ).fillna(0)
+    return out
+
+
 # ------------------------------- Company & domain sources (JSON) --------------
+
+
 def companies() -> List[Dict]:
+    # Function: companies
+    # Description: Loads company data for dashboard and company views from all company bundles.
+    # Usage: companies()
+    # Returns: List of company dicts
     bundles = list_company_bundles()
     out = []
     for b in bundles:
@@ -28,19 +62,29 @@ def companies() -> List[Dict]:
 
 
 def domains() -> List[Dict]:
+    # Function: domains
+    # Description: Loads domain data for dashboard and domain views from all company bundles.
+    # Usage: domains()
+    # Returns: List of domain dicts
     bundles = list_company_bundles()
     out = []
     for b in bundles:
         cid = b.get("company_id")
         for d in b.get("domains") or []:
-            row = dict(d)  # domain_id, domain_name, domain_score, findings_by_category
+            row = dict(d)
             row["company_id"] = cid
             out.append(row)
     return out
 
 
 # ------------------------------- Company select options -----------------------
+
+
 def list_company_options(cs: List[Dict]) -> Tuple[List[str], Dict[str, Any]]:
+    # Function: list_company_options
+    # Description: Creates a list of company options for selection dropdown and a mapping from label to company_id.
+    # Usage: list_company_options(cs)
+    # Returns: tuple (list of option labels, mapping from label to company_id)
     opts, map_ = [], {}
     for c in cs:
         cid = c.get("company_id") or c.get("id")
@@ -52,7 +96,13 @@ def list_company_options(cs: List[Dict]) -> Tuple[List[str], Dict[str, Any]]:
 
 
 # ------------------------------- Filter domains by company --------------------
+
+
 def filter_domains_for_company(ds: List[Dict], company_id: Any) -> List[Dict]:
+    # Function: filter_domains_for_company
+    # Description: Filters domains for the selected company.
+    # Usage: filter_domains_for_company(ds, company_id)
+    # Returns: list of domain dicts for the company
     sid = None if company_id is None else str(company_id)
 
     def _cid(d):
@@ -62,10 +112,15 @@ def filter_domains_for_company(ds: List[Dict], company_id: Any) -> List[Dict]:
 
 
 # ------------------------------- Company summary (KPIs) -----------------------
+
+
 def company_summary(company_id: Any) -> Dict[str, str]:
+    # Function: company_summary
+    # Description: Returns summary KPIs (grade, total GPA, calculated date) for a company.
+    # Usage: company_summary(company_id)
+    # Returns: dict with grade, total_gpa, calculated_date
     out = {"grade": "—", "total_gpa": "—", "calculated_date": "—"}
     b = load_company_bundle(company_id) or {}
-
     rg = b.get("risk_grade") or {}
     if rg:
         if rg.get("grade"):
@@ -77,7 +132,6 @@ def company_summary(company_id: Any) -> Dict[str, str]:
                 pass
         if rg.get("calculated_date"):
             out["calculated_date"] = str(rg["calculated_date"])
-
     if out["total_gpa"] == "—":
         gpas = []
         for cat in b.get("categories") or []:
@@ -93,48 +147,17 @@ def company_summary(company_id: Any) -> Dict[str, str]:
 
 
 # ------------------------------- Domain overview ------------------------------
-def domain_overview(domain_id: Any) -> Tuple[Optional[float], List[Dict]]:
-    bundles = list_company_bundles()
-    for b in bundles:
-        for d in b.get("domains") or []:
-            did = d.get("domain_id") or d.get("id") or d.get("domainId")
-            if str(did) != str(domain_id):
-                continue
 
-            score = d.get("domain_score")
-            try:
-                score = float(score) if score is not None else None
-            except Exception:
-                score = None
-
-            findings: List[Dict] = []
-            fbc = d.get("findings_by_category") or {}
-            for _, rows in fbc.items():
-                for r in rows or []:
-                    if isinstance(r, dict):
-                        rc = dict(r)
-                        rc.pop("Category", None)
-                        findings.append(rc)
-
-            if score is None and findings:
-                vals = []
-                for r in findings:
-                    for k in ("Finding Score", "finding_score", "score"):
-                        try:
-                            if r.get(k) is not None:
-                                vals.append(float(r[k]))
-                                break
-                        except Exception:
-                            pass
-                if vals:
-                    score = sum(vals) / len(vals)
-
-            return score, findings
-    return None, []
-
+# domain_overview is now imported from utils.dataframe_utils
 
 # ------------------------------- Domain filters (original UX) -----------------
+
+
 def _pluck_first(d: Dict, keys: List[str]) -> Optional[str]:
+    # Function: _pluck_first
+    # Description: Returns the first non-empty value for any key in keys from dict d.
+    # Usage: _pluck_first(d, keys)
+    # Returns: str or None
     for k in keys:
         if k in d and d[k] not in (None, ""):
             return str(d[k])
@@ -142,7 +165,10 @@ def _pluck_first(d: Dict, keys: List[str]) -> Optional[str]:
 
 
 def get_domain_filter_options_original(findings: List[Dict]):
-    """Collect unique values for IP / Type / Level / Date from findings."""
+    # Function: get_domain_filter_options_original
+    # Description: Collects unique filter options (IP, Type, Level, Date) from findings.
+    # Usage: get_domain_filter_options_original(findings)
+    # Returns: tuple (dict of options, list of original column names)
     ips, types, levels, dates = set(), set(), set(), set()
     for r in findings or []:
         ip = _pluck_first(r, ["ip_address", "ip", "address"])
@@ -168,8 +194,10 @@ def get_domain_filter_options_original(findings: List[Dict]):
 
 
 def _date_ok(v: Optional[str], start: Optional[str], end: Optional[str]) -> bool:
-    import pandas as pd
-
+    # Function: _date_ok
+    # Description: Checks if a date value is within the start and end date range.
+    # Usage: _date_ok(v, start, end)
+    # Returns: bool
     if not v:
         return True
     try:
@@ -195,6 +223,10 @@ def filter_domain_findings_original(
     start_date: str = "Any",
     end_date: str = "Any",
 ) -> List[Dict]:
+    # Function: filter_domain_findings_original
+    # Description: Filters findings by IP, type, level, and date range for domain tab.
+    # Usage: filter_domain_findings_original(findings, ip, ftype, level, start_date, end_date)
+    # Returns: list of filtered findings
     out = []
     for r in findings or []:
         ip_ok = (ip == "All") or (r.get("ip_address") == ip or r.get("ip") == ip)

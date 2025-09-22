@@ -1,0 +1,14 @@
+
+# view_dashboard functions
+
+1. render_company_tab(companies_payload, selected_company_id, company_domains)
+- Renders the Company tab with KPIs, company details, domains, category scores, and category graph using Streamlit.
+- Used in app.py (for dashboard view)
+
+2. render_domain_tab(domain_items)
+- Renders the Domain tab with metrics, charts, filters, and findings table using Streamlit.
+- Used in app.py (for dashboard view)
+
+3. render_nist_finding_tab(selected_company_id, company_domains)
+- Renders the CSF tab with the Current Maturity graph, controls table, and L2 Domains table using Streamlit.
+- Used in app.py (for dashboard view)

@@ -1,0 +1,26 @@
+
+# charts functions
+
+1. company_category_scores_chart(df, ...)
+- Bar chart of company category scores (0–4).
+- Used in ui/view_dashboard/company_tab.py (for category graph)
+
+2. domain_security_scatter_chart(domains_data, ...)
+- Scatter plot of domain security scores and findings count.
+- Used in ui/view_dashboard/domain_tab.py (for domain analysis)
+
+3. timeline_findings_chart(domains_data)
+- Timeline chart of findings discovery dates and scores.
+- Used in ui/view_dashboard/domain_tab.py (for findings timeline)
+
+4. csf_maturity_line_chart(scores_df, internal_rows)
+- Line chart of CSF maturity by external findings and mapped controls.
+- Used in ui/view_dashboard/nist_finding_tab.py (for CSF graph)
+
+5. build_csf_controls_table_df(scores_df, internal_rows, company_id)
+- Builds a table of CSF controls and CMM scores for a company.
+- Used in ui/view_dashboard/nist_finding_tab.py (for controls table)
+
+6. render_l2_domains_table(selected_company_id)
+- Renders the L2 Domains table showing NIST CSF maturity by domain.
+- Used in ui/view_dashboard/nist_finding_tab.py (for L2 domains table)

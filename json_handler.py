@@ -1,10 +1,7 @@
 # json_handler.py
-# -----------------------------------------------------------------------------
-# Disk-backed company bundles:
-# - One JSON per company at data/{company_id}_data.json
-# - Views read these bundles (except CMM/internal which stays live)
-# - You can call build_company_bundle(...) yourself wherever you prefer.
-# -----------------------------------------------------------------------------
+# Disk-backed company bundles: one JSON per company at data/{company_id}_data.json
+# Views read these bundles (except CMM/internal which stays live)
+# You can call build_company_bundle(...) wherever you prefer.
 
 from __future__ import annotations
 import os
@@ -14,7 +11,7 @@ import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List
 
-from helpers import CATEGORY_NAMES
+from utils.dataframe_utils import CATEGORY_NAMES
 from api import (
     get_companies,
     get_domains,
@@ -41,11 +38,11 @@ def _atomic_write_json(path: str, data: dict):
             json.dump(data, f, ensure_ascii=False, indent=2)
         os.replace(tmp, path)
     finally:
-        try:
-            if os.path.exists(tmp):
+        if os.path.exists(tmp):
+            try:
                 os.remove(tmp)
-        except Exception:
-            pass
+            except Exception:
+                pass
 
 
 def _strip_transport(obj: Any) -> Any:
@@ -77,8 +74,6 @@ def load_company_bundle(company_id: Any) -> dict:
     try:
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
-    except FileNotFoundError:
-        return {}
     except Exception:
         return {}
 
@@ -86,20 +81,17 @@ def load_company_bundle(company_id: Any) -> dict:
 def list_company_bundles() -> List[dict]:
     _ensure_dir()
     out = []
-    try:
-        for name in sorted(os.listdir(DATA_ROOT)):
-            if not name.endswith("_data.json"):
-                continue
-            full = os.path.join(DATA_ROOT, name)
-            if not os.path.isfile(full):
-                continue
-            try:
-                with open(full, "r", encoding="utf-8") as f:
-                    out.append(json.load(f))
-            except Exception:
-                pass
-    except FileNotFoundError:
-        pass
+    for name in sorted(os.listdir(DATA_ROOT)):
+        if not name.endswith("_data.json"):
+            continue
+        full = os.path.join(DATA_ROOT, name)
+        if not os.path.isfile(full):
+            continue
+        try:
+            with open(full, "r", encoding="utf-8") as f:
+                out.append(json.load(f))
+        except Exception:
+            pass
     return out
 
 
@@ -242,8 +234,7 @@ def ensure_initial_bundles() -> int:
     existing = list_company_bundles()
     if existing:
         return len(existing)
-    written = build_all_company_bundles()
-    return len(written)
+    return len(build_all_company_bundles())
 
 
 def rebuild_company_bundle_for_id(company_id: int | str) -> str | None:
@@ -268,22 +259,17 @@ def ensure_missing_bundles() -> int:
     Returns how many new files were written.
     """
     _ensure_dir()
-    existing_ids = set()
-    for name in os.listdir(DATA_ROOT):
-        if name.endswith("_data.json"):
-            try:
-                existing_ids.add(name.split("_data.json")[0])
-            except Exception:
-                pass
-
+    existing_ids = set(
+        name.split("_data.json")[0]
+        for name in os.listdir(DATA_ROOT)
+        if name.endswith("_data.json")
+    )
     cs = get_companies() or []
     all_domains = get_domains() or []
     written = 0
     for c in cs:
         cid = c.get("company_id") or c.get("id")
-        if cid is None:
-            continue
-        if str(cid) in existing_ids:
+        if cid is None or str(cid) in existing_ids:
             continue
         bundle = build_company_bundle(c, all_domains)
         write_company_bundle(cid, bundle)

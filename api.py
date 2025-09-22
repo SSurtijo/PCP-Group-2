@@ -1,27 +1,25 @@
-# api.py
+###
+# File: api.py
+# Description: API layer for PCP project. Handles external and internal data requests.
+###
 
 import os
 import requests
 from typing import Any, Dict, List, Union
 from urllib.parse import quote
 
-# Base URL can be overridden with the env var RISK_API_BASE
 BASE = os.getenv(
     "RISK_API_BASE",
     "https://abfzxwlwbqbrsdd-dev.adb.ap-sydney-1.oraclecloudapps.com/ords/uws_project/riskapi",
 ).rstrip("/")
-
-# Use a Session for connection pooling (more efficient than raw requests.get)
 _session = requests.Session()
 
 
 def _request(url: str) -> Any:
-    """
-    Core GET request:
-    - Raises on non-2xx status codes
-    - Returns JSON if possible
-    - If body is not JSON, try to parse as a float (some endpoints return numbers)
-    """
+    # Function: _request
+    # Description: Core GET request for API endpoints.
+    # Usage: _request(url)
+    # Returns: JSON, float, or raises error
     r = _session.get(url, timeout=20, headers={"Accept": "application/json"})
     r.raise_for_status()
     try:
@@ -35,10 +33,10 @@ def _request(url: str) -> Any:
 
 
 def _get(path: str) -> Any:
-    """
-    Build the full URL and fetch it.
-    If it fails due to trailing slash mis-match, flip and retry once.
-    """
+    # Function: _get
+    # Description: Build the full URL and fetch it. Retries on trailing slash mismatch.
+    # Usage: _get(path)
+    # Returns: API response
     url = f"{BASE}{path if path.startswith('/') else '/'+path}"
     try:
         return _request(url)
@@ -50,10 +48,10 @@ def _get(path: str) -> Any:
 
 
 def _items(x: Union[Dict, List]) -> Any:
-    """
-    Many ORDS endpoints wrap results inside {"items": [...] }.
-    This helper returns the 'items' list if present, otherwise the original object.
-    """
+    # Function: _items
+    # Description: Returns the 'items' list from ORDS endpoints if present, else original object.
+    # Usage: _items(x)
+    # Returns: list or original object
     return x.get("items", x) if isinstance(x, dict) else x
 
 
@@ -61,57 +59,66 @@ def _items(x: Union[Dict, List]) -> Any:
 # Public API Endpoints
 # -----------------------
 def get_companies() -> List[Dict]:
-    """GET /get_companies → list of company dicts."""
+    # Function: get_companies
+    # Description: Fetches companies from external API.
+    # Usage: get_companies()
+    # Returns: list of company dicts
     return _items(_get("/get_companies"))
 
 
 def get_domains() -> List[Dict]:
-    """GET /get_domains → list of domain dicts."""
+    # Function: get_domains
+    # Description: Fetches domains from external API.
+    # Usage: get_domains()
+    # Returns: list of domain dicts
     return _items(_get("/get_domains"))
 
 
 def get_category_gpa(company_id: int, name: str) -> Any:
-    """
-    GET /get_category_gpa/{company_id}/{category}/
-    - Often returns an object or list with GPA fields.
-    - We normalize the wrapper via _items.
-    """
+    # Function: get_category_gpa
+    # Description: Fetches category GPA for a company from API.
+    # Usage: get_category_gpa(company_id, name)
+    # Returns: GPA value or list
     return _items(_get(f"/get_category_gpa/{company_id}/{quote(name, safe='')}/"))
 
 
 def get_company_risk_grade(company_id: int) -> Dict:
-    """GET /get_company_risk_grade/{company_id}/ → object with grade/total_gpa/date."""
+    # Function: get_company_risk_grade
+    # Description: Fetches risk grade for a company from API.
+    # Usage: get_company_risk_grade(company_id)
+    # Returns: dict with risk grade info
     return _get(f"/get_company_risk_grade/{company_id}/")
 
 
 def get_domain_score(domain_id: int) -> Any:
-    """GET /get_domain_score/{domain_id}/ → may be JSON or a bare number (float)."""
+    # Function: get_domain_score
+    # Description: Fetches domain score from API.
+    # Usage: get_domain_score(domain_id)
+    # Returns: score value
     return _get(f"/get_domain_score/{domain_id}/")
 
 
 def get_findings_by_category(domain_id: int, name: str) -> Any:
-    """
-    GET /get_findings_by_category/{domain_id}/{category}/
-    - Result varies by category; may be list or dict with 'findings' list.
-    """
+    # Function: get_findings_by_category
+    # Description: Fetches findings by category for a domain from API.
+    # Usage: get_findings_by_category(domain_id, name)
+    # Returns: findings list or value
     return _items(
         _get(f"/get_findings_by_category/{domain_id}/{quote(name, safe='')}/")
     )
 
 
 def get_internal_scan(limit: int = 200):
-    """
-    Fetch the 'Internal Scan' data (actually comes from the CMM ratings stub).
-    Returns a list of dicts (unwraps {"items": [...]} if present).
-    """
+    # Function: get_internal_scan
+    # Description: Fetches internal scan ratings (CMM) from API.
+    # Usage: get_internal_scan(limit)
+    # Returns: list of ratings
     url = (
         "https://abfzxwlwbqbrsdd-dev.adb.ap-sydney-1.oraclecloudapps.com/"
         f"ords/dev/cmm_ratings_stub/?limit={limit}"
     )
-
     r = _session.get(url, timeout=20, headers={"Accept": "application/json"})
     r.raise_for_status()
-
     payload = r.json()
     return payload.get("items", payload) if isinstance(payload, dict) else payload
 
@@ -120,11 +127,10 @@ def get_internal_scan(limit: int = 200):
 # Optional: trigger bundle rebuild from API layer
 # -----------------------
 def rebuild_all_company_jsons() -> int:
-    """
-    Convenience wrapper to (re)build all company bundles on disk without importing
-    json_handler at module import time (avoids circulars).
-    Returns number of bundles written.
-    """
+    # Function: rebuild_all_company_jsons
+    # Description: Triggers bundle rebuild from API layer.
+    # Usage: rebuild_all_company_jsons()
+    # Returns: int (number of bundles rebuilt)
     try:
         from json_handler import build_all_company_bundles
 

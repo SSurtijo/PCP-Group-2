@@ -1,13 +1,12 @@
-# company_tab.py — drop-in (row numbers visible)
+###
+# File: ui/view_dashboard/company_tab.py
+# Description: Renders the Company tab for PCP project dashboard UI.
+###
+
 import streamlit as st
 import pandas as pd
-
-from helpers import (
-    to_df,
-    stringify_nested,
-    get_company_category_scores_df,
-)
-from services import company_summary
+from utils.dataframe_utils import to_df, stringify_nested
+from services import get_company_category_scores_df, company_summary
 from charts.charts_company import company_category_scores_chart
 from nist.nist_helpers import summarize_csf_for_category
 from json_handler import load_company_bundle
@@ -19,16 +18,19 @@ from json_handler import load_company_bundle
 def _domains_table(
     selected_company_id: int, company_domains: list[dict]
 ) -> pd.DataFrame:
-    """
-    Build: domain_id | company_id | domain_name | source | first_seen | last_seen
-    Derives first/last_seen from nested findings_by_category dates if present.
-    """
+    # Function: _domains_table
+    # Description: Builds a table with domain info and first/last seen dates for the selected company.
+    # Usage: _domains_table(selected_company_id, company_domains)
+    # Returns: DataFrame with domain info
+    # Prepare rows for each domain
     rows = []
     for d in company_domains or []:
-        did = d.get("domain_id") or d.get("id") or d.get("domainId")
-        name = d.get("domain_name") or d.get("domain") or d.get("name")
+        did = d.get("domain_id") or d.get("id") or d.get("domainId")  # Get domain ID
+        name = (
+            d.get("domain_name") or d.get("domain") or d.get("name")
+        )  # Get domain name
 
-        # derive first/last seen from nested findings dates
+        # Derive first/last seen dates from findings
         fbc = d.get("findings_by_category") or {}
         dates = []
         for lst in fbc.values():
@@ -36,9 +38,10 @@ def _domains_table(
                 dt = r.get("found_date") or r.get("date") or r.get("scan_date")
                 if dt:
                     dates.append(str(dt))
-        first_seen = min(dates) if dates else None
-        last_seen = max(dates) if dates else None
+        first_seen = min(dates) if dates else None  # Earliest date
+        last_seen = max(dates) if dates else None  # Latest date
 
+        # Add domain info to rows
         rows.append(
             {
                 "domain_id": did,
@@ -50,6 +53,7 @@ def _domains_table(
             }
         )
 
+    # Create DataFrame from rows
     df = pd.DataFrame(
         rows,
         columns=[
@@ -66,11 +70,15 @@ def _domains_table(
 
 def _category_scores_table(selected_company_id: int) -> pd.DataFrame:
     """
-    Build: company_id | Category | nist_csf_identifiers | category_gpa | category_score | aggregated_at
-    Pulls GPA/score from helpers, aggregated_at from bundle, adds NIST IDs.
+    Builds a table with company category scores, GPA, and NIST CSF identifiers for the selected company.
+    Usage: ui/view_dashboard/company_tab.py
+    Inputs: selected_company_id (int)
+    Outputs: DataFrame with category scores
     """
+    # Step 1: Get category scores for the company
     scores = get_company_category_scores_df(selected_company_id)
     if scores is None or scores.empty:
+        # Step 2: Return empty DataFrame if no scores
         return pd.DataFrame(
             columns=[
                 "company_id",
@@ -82,7 +90,7 @@ def _category_scores_table(selected_company_id: int) -> pd.DataFrame:
             ]
         )
 
-    # bring aggregated_at from bundle
+    # Step 3: Get aggregated_at from bundle
     bundle = load_company_bundle(selected_company_id) or {}
     cats = pd.DataFrame(bundle.get("categories") or [])
     cats = (
@@ -91,9 +99,10 @@ def _category_scores_table(selected_company_id: int) -> pd.DataFrame:
         else pd.DataFrame(columns=["Category", "aggregated_at"])
     )
 
+    # Step 4: Merge scores and aggregated_at
     df = scores.merge(cats, on="Category", how="left")
 
-    # add columns to match screenshot
+    # Step 5: Add company_id and NIST CSF identifiers columns
     df.insert(0, "company_id", int(selected_company_id))
     df.insert(
         2,
@@ -103,7 +112,7 @@ def _category_scores_table(selected_company_id: int) -> pd.DataFrame:
         ),
     )
 
-    # tidy numerics
+    # Step 6: Tidy up numeric columns
     if "category_score" in df.columns:
         df["category_score"] = (
             pd.to_numeric(df["category_score"], errors="coerce")
@@ -113,7 +122,7 @@ def _category_scores_table(selected_company_id: int) -> pd.DataFrame:
     if "category_gpa" in df.columns:
         df["category_gpa"] = pd.to_numeric(df["category_gpa"], errors="coerce")
 
-    # final column order
+    # Step 7: Final column order
     df = df[
         [
             "company_id",
@@ -124,6 +133,7 @@ def _category_scores_table(selected_company_id: int) -> pd.DataFrame:
             "aggregated_at",
         ]
     ]
+    # Step 8: Return the DataFrame
     return df
 
 
@@ -131,9 +141,13 @@ def _category_scores_table(selected_company_id: int) -> pd.DataFrame:
 
 
 def render_company_tab(companies_payload, selected_company_id, company_domains):
-    """Render the 'Company' tab."""
-
-    # KPI row (bundle-backed)
+    """
+    Renders the 'Company' tab with KPIs, company details, domains, category scores, and category graph using Streamlit.
+    Usage: app.py (Company tab)
+    Inputs: companies_payload (list), selected_company_id (int), company_domains (list)
+    Outputs: None (renders tab in UI)
+    """
+    # Step 1: Show KPI row (bundle-backed)
     agg = company_summary(selected_company_id)
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Risk Grade", agg["grade"])
@@ -141,7 +155,7 @@ def render_company_tab(companies_payload, selected_company_id, company_domains):
     c3.metric("Domains", len(company_domains))
     c4.metric("Last Calculated", agg["calculated_date"])
 
-    # Company details (single-row table)
+    # Step 2: Show company details (single-row table)
     row = next(
         (
             c
@@ -156,7 +170,7 @@ def render_company_tab(companies_payload, selected_company_id, company_domains):
     else:
         st.dataframe(df1, use_container_width=True)  # show row index
 
-    # ---- Company Domains (exact shape like screenshot) ----
+    # Step 3: Show company domains (exact shape like screenshot)
     with st.expander("Company Domains", expanded=True):
         if not company_domains:
             st.info("No domains.")
@@ -164,7 +178,7 @@ def render_company_tab(companies_payload, selected_company_id, company_domains):
             dom_df = _domains_table(selected_company_id, company_domains)
             st.dataframe(dom_df, use_container_width=True)  # show row index
 
-    # ---- Company Category GPA & Scores (exact shape like screenshot) ----
+    # Step 4: Show company category GPA & scores (exact shape like screenshot)
     with st.expander("Company Category GPA & Scores", expanded=True):
         if not selected_company_id:
             st.info("Select a company to view Category GPA.")
@@ -175,7 +189,7 @@ def render_company_tab(companies_payload, selected_company_id, company_domains):
             else:
                 st.dataframe(cat_df, use_container_width=True)  # show row index
 
-    # Category Graph (unchanged)
+    # Step 5: Show category graph
     with st.expander("Category Graph", expanded=True):
         sort_label = st.selectbox(
             "Sort by",

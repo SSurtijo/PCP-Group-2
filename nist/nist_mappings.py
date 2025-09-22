@@ -1,4 +1,10 @@
-# ---- CSF function names (Level 1) ----
+###
+# File: nist/nist_mappings.py
+# Description: NIST CSF function and control mappings for PCP project.
+# Defines L1/L2 function names, control mappings, and external finding mappings.
+###
+
+### CSF function names (Level 1)
 CSF_L1_FUNCTION_FULL = {
     "GV": "Govern",
     "ID": "Identify",
@@ -8,7 +14,7 @@ CSF_L1_FUNCTION_FULL = {
     "RC": "Recover",
 }
 
-# ---- Function Identifier → Function Name (L1→L2) ----
+### Function Identifier → Function Name (L1→L2)
 FUNCTION_L1_IDENTIFIER_TO_FUNCTION_L2 = {
     "GV.OC": "Organizational Context",
     "GV.OV": "Oversight",
@@ -34,7 +40,7 @@ FUNCTION_L1_IDENTIFIER_TO_FUNCTION_L2 = {
     "RC.CO": "Incident Recovery Communication",
 }
 
-# ---- Function (L2) → Controls ----
+### Function (L2) → Controls
 FUNCTION_L2_TO_CONTROLS = {
     "Organizational Context": ["GV.OC-02", "GV.OC-03", "GV.OC-04", "GV.OC-05"],
     "Oversight": ["GV.OV-01", "GV.OV-02", "GV.OV-03"],
@@ -142,7 +148,7 @@ FUNCTION_L2_TO_CONTROLS = {
     "Incident Recovery Communication": ["RC.CO-03", "RC.CO-04"],
 }
 
-# ---- External Findings → Controls (per your remap) ----
+### External Findings → Controls (per your remap)
 EXTERNAL_FINDINGS_TO_CONTROLS = {
     "Attack Surface": ["ID.AM-01", "ID.RA-01"],
     "Vulnerability Exposure": ["PR.PS-01", "DE.CM-01"],

@@ -1,0 +1,36 @@
+
+# services.py functions
+
+1. companies()
+- Loads company data for dashboard and company views from all company bundles.
+- Used in app.py (for loading company data in dashboard and company views)
+
+2. domains()
+- Loads domain data for dashboard and domain views from all company bundles.
+- Used in app.py (for loading domain data in dashboard and domain views)
+
+3. list_company_options(cs)
+- Returns company select options and mapping for dropdowns.
+- Used in app.py (for company selection dropdown)
+
+4. filter_domains_for_company(ds, company_id)
+- Filters domains by company ID.
+- Used in app.py and dashboard views (to filter domains for selected company)
+
+5. company_summary(company_id)
+- Returns summary KPIs for a company (risk grade, GPA, domain count, last calculated).
+- Used in ui/view_dashboard/company_tab.py (for KPI metrics)
+
+6. get_company_category_scores_df(company_id)
+- Reads category scores and GPA from company bundle JSON.
+- Used in ui/view_dashboard/company_tab.py, nist_finding_tab.py, and charts (for category tables and charts)
+
+7. get_domain_filter_options_original(findings)
+- Collects unique filter options from findings (IP, type, level, date).
+- Used in ui/view_dashboard/domain_tab.py (for filter UI)
+
+8. filter_domain_findings_original(...)
+- Filters findings by IP, type, level, date.
+- Used in ui/view_dashboard/domain_tab.py (for filtered findings table)
+
+Note: domain_overview is now imported from utils/dataframe_utils.py and used for domain analysis in services, charts, and UI modules.

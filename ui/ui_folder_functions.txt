@@ -1,0 +1,6 @@
+
+# ui functions
+
+1. show_all_companies(companies_payload)
+- Displays all companies in a table and shows the total count metric using Streamlit.
+- Used in app.py (for Companies view)
