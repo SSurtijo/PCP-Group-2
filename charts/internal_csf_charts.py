@@ -4,22 +4,13 @@
 
 import altair as alt
 import pandas as pd
-
+from api import get_internal_scan
 from nist.nist_mappings import EXTERNAL_FINDINGS_TO_CONTROLS
 from nist.nist_helpers import controls_for_finding
 from utils.dataframe_utils import CATEGORY_NAMES
-from .charts_helpers import (
-    _rating,
-    detect_control_ref_col,
-    csv_upper,
-    fmt_or_dash,
-    mean,
-)
+from helpers import extract_rating, detect_control_ref_col, csv_upper, fmt_or_dash, mean
+from utils.normalization import norm_ref
 
-# Import normalization utilities for control references
-from utils.normalization import norm_ref, prefix
-
-# Normalize external mapping up-front
 EXTERNAL_FINDINGS_TO_CONTROLS_NORM = {
     finding: [norm_ref(c) for c in ctrls]
     for finding, ctrls in EXTERNAL_FINDINGS_TO_CONTROLS.items()
@@ -65,58 +56,47 @@ def _fallback_chart(scores_df: pd.DataFrame):
     df["Category"] = pd.Categorical(df["Category"], categories=order, ordered=True)
 
     base = alt.Chart(df).encode(
-        x=alt.X("Category:N", sort=order, title="External Findings"),
+        x=alt.X("Category:N", sort=order, title=None),
         y=alt.Y(
-            "findings_gpa:Q", title="Findings GPA (0–4)", scale=alt.Scale(domain=[0, 4])
+            "findings_gpa:Q",
+            title="Findings GPA",
+            scale=alt.Scale(domain=[0, 4], nice=False),
         ),
     )
-    line = base.mark_line()
-    pts = base.mark_circle(size=80).encode(
+    bar = base.mark_bar(size=40, opacity=0.85).encode(
         tooltip=[
-            alt.Tooltip("findings_label:N", title="Findings"),
-            alt.Tooltip("findings_gpa_disp:N", title="Findings GPA"),
+            alt.Tooltip("findings_gpa_disp:N", title="Finding GPA"),
             alt.Tooltip("controls_disp:N", title="Control"),
-            alt.Tooltip("cmm_mean_disp:N", title="Mean CMM"),
         ]
     )
-    return (
-        (line + pts)
-        .properties(title="Internal CSF Graph")
-        .configure_axis(labelColor="white", titleColor="white")
-        .configure_title(color="white")
-    )
+    return bar.configure_axis(labelColor="white", titleColor="white")
 
 
-# Line chart of CSF maturity by external findings and mapped controls.
-# Usage: csf_maturity_line_chart(scores_df, internal_rows)
-# Returns: Altair chart or None
-def csf_maturity_line_chart(
-    scores_df: pd.DataFrame, internal_rows: list[dict] | None = None
-):
+def csf_maturity_line_chart(selected_company_id: int) -> alt.Chart:
+    # Load scores and internal scan
+    from services import get_company_category_scores_df
+
+    scores_df = get_company_category_scores_df(selected_company_id)
+    try:
+        internal_rows = get_internal_scan(limit=2000)
+    except Exception:
+        internal_rows = []
     if scores_df is None or scores_df.empty or "Category" not in scores_df.columns:
         return None
-
     api_findings = [str(x).strip() for x in scores_df["Category"].dropna().tolist()]
     findings = [f for f in api_findings if f in EXTERNAL_FINDINGS_TO_CONTROLS_NORM]
     if not findings:
         return None
-
-    # Internal ratings
     df_ctrl = pd.DataFrame(internal_rows or [])
     if df_ctrl.empty:
         return _fallback_chart(scores_df)
-
     ctrl_col = detect_control_ref_col(df_ctrl)
     if not ctrl_col:
         return _fallback_chart(scores_df)
-
     df_ctrl = df_ctrl.copy()
-    # Standardize control references using norm_ref
     df_ctrl["control_ref_norm"] = df_ctrl[ctrl_col].apply(norm_ref)
-    df_ctrl["rating_val"] = df_ctrl.apply(_rating, axis=1)
+    df_ctrl["rating_val"] = df_ctrl.apply(extract_rating, axis=1)
     df_ctrl = df_ctrl.dropna(subset=["control_ref_norm", "rating_val"])
-
-    # Finding -> GPA
     gpa_col = next((c for c in ("category_gpa", "gpa") if c in scores_df.columns), None)
     finding_gpa = {}
     if gpa_col:
@@ -127,59 +107,38 @@ def csf_maturity_line_chart(
             val = r[gpa_col]
             if pd.notna(val):
                 finding_gpa[name] = float(val)
-
-    # index of ratings by normalized control
     ctrl_index = df_ctrl.set_index("control_ref_norm")["rating_val"]
-
     rows = []
     for finding in findings:
-        mapped_controls = controls_for_finding(finding)  # normalized list
-        # Control tooltip (ALL CAPS)
+        mapped_controls = controls_for_finding(finding)
         controls_disp = csv_upper(mapped_controls)
-
-        # Mean CMM across mapped controls present in internal data
-        vals = [float(ctrl_index[c]) for c in mapped_controls if c in ctrl_index]
-        cmm_mean = mean(vals)
-
-        # GPA
         gpa_val = finding_gpa.get(finding, float("nan"))
-
         rows.append(
             {
                 "Finding": finding,
-                "y_val": cmm_mean,
-                "findings_label": finding,
+                "findings_gpa": gpa_val,
                 "findings_gpa_disp": fmt_or_dash(gpa_val, 2),
                 "controls_disp": controls_disp,
-                "cmm_mean_disp": fmt_or_dash(cmm_mean, 2),
             }
         )
-
     df = pd.DataFrame(rows)
     order = _ordered_findings(findings)
     df["Finding"] = pd.Categorical(df["Finding"], categories=order, ordered=True)
-
     base = alt.Chart(df).encode(
-        x=alt.X("Finding:N", sort=order, title="External Findings"),
+        x=alt.X("Finding:N", sort=order, title=None),
         y=alt.Y(
-            "y_val:Q", title="Current maturity (0–4)", scale=alt.Scale(domain=[0, 4])
+            "findings_gpa:Q",
+            title="Findings GPA",
+            scale=alt.Scale(domain=[0, 4], nice=False),
         ),
     )
-    line = base.mark_line()
-    pts = base.mark_circle(size=80).encode(
+    bar = base.mark_bar(size=40, opacity=0.85).encode(
         tooltip=[
-            alt.Tooltip("findings_label:N", title="Findings"),
-            alt.Tooltip("findings_gpa_disp:N", title="Findings GPA"),
+            alt.Tooltip("findings_gpa_disp:N", title="Finding GPA"),
             alt.Tooltip("controls_disp:N", title="Control"),
-            alt.Tooltip("cmm_mean_disp:N", title="Mean CMM"),
         ]
     )
-    return (
-        (line + pts)
-        .properties(title="Internal CSF Graph")
-        .configure_axis(labelColor="white", titleColor="white")
-        .configure_title(color="white")
-    )
+    return bar.configure_axis(labelColor="white", titleColor="white")
 
 
 # Builds a table of CSF controls and CMM scores for a company.
@@ -204,7 +163,7 @@ def build_csf_controls_table_df(
     df_ctrl = df_ctrl.copy()
     # Standardize control references using norm_ref
     df_ctrl["control_ref_norm"] = df_ctrl[ctrl_col].apply(norm_ref)
-    df_ctrl["rating_val"] = df_ctrl.apply(_rating, axis=1)
+    df_ctrl["rating_val"] = df_ctrl.apply(extract_rating, axis=1)
     df_ctrl = df_ctrl.dropna(subset=["control_ref_norm", "rating_val"])
 
     ctrl_index = df_ctrl.set_index("control_ref_norm")["rating_val"]

@@ -8,6 +8,7 @@ import pandas as pd
 from utils.dataframe_utils import CATEGORY_NAMES, extract_number, domain_overview
 from json_handler import list_company_bundles, load_company_bundle
 from api import get_internal_scan  # only for CMM/internal
+from nist.nist_helpers import controls_for_finding
 
 
 def get_company_category_scores_df(company_id) -> pd.DataFrame:
@@ -242,3 +243,85 @@ def filter_domain_findings_original(
         if ip_ok and type_ok and lvl_ok and _date_ok(dt_val, start_date, end_date):
             out.append(r)
     return out
+
+
+__all__ = [
+    "get_company_category_scores_df",
+    "companies",
+    "domains",
+    "list_company_options",
+    "filter_domains_for_company",
+    "company_summary",
+    "build_external_finding_gpa_cmm",
+    "to_external_findings_long",
+]
+
+
+def build_external_finding_gpa_cmm(
+    scores_df: pd.DataFrame, internal_rows: list
+) -> pd.DataFrame:
+    # Compose GPA and CMM per external finding
+    # scores_df: must have ['Category', 'category_gpa']
+    # internal_rows: must have control_ref and cmm_rating (etc.)
+    gpa_map = {
+        str(row["Category"]): row.get("category_gpa", None)
+        for _, row in scores_df.iterrows()
+    }
+    cmm_map = {}
+    control_map = {}
+    df_ctrl = pd.DataFrame(internal_rows or [])
+    if not df_ctrl.empty:
+        ctrl_col = None
+        for c in df_ctrl.columns:
+            if c.lower() in [
+                "control_ref",
+                "control_reference",
+                "control",
+                "ref",
+                "nist_control",
+            ]:
+                ctrl_col = c
+                break
+        if ctrl_col:
+            df_ctrl["control_ref_norm"] = df_ctrl[ctrl_col].astype(str)
+            df_ctrl["rating_val"] = pd.to_numeric(
+                df_ctrl.get("cmm_rating", df_ctrl.get("rating", None)), errors="coerce"
+            )
+            for finding in gpa_map.keys():
+                refs = controls_for_finding(finding)
+                vals = (
+                    df_ctrl[df_ctrl["control_ref_norm"].isin(refs)]["rating_val"]
+                    .dropna()
+                    .tolist()
+                )
+                cmm_map[finding] = sum(vals) / len(vals) if vals else None
+                control_map[finding] = ", ".join(refs)
+        else:
+            for finding in gpa_map.keys():
+                cmm_map[finding] = None
+                control_map[finding] = ""
+    else:
+        for finding in gpa_map.keys():
+            cmm_map[finding] = None
+            control_map[finding] = ""
+    out = pd.DataFrame(
+        {
+            "external_finding": list(gpa_map.keys()),
+            "category": list(gpa_map.keys()),
+            "gpa": [gpa_map[k] for k in gpa_map.keys()],
+            "cmm_score": [cmm_map[k] for k in gpa_map.keys()],
+            "control_refs": [control_map[k] for k in gpa_map.keys()],
+        }
+    )
+    return out
+
+
+def to_external_findings_long(df: pd.DataFrame) -> pd.DataFrame:
+    long_df = df.melt(
+        id_vars=["external_finding", "category", "control_refs"],
+        value_vars=["gpa", "cmm_score"],
+        var_name="metric",
+        value_name="score",
+    )
+    long_df["metric"] = long_df["metric"].map({"gpa": "GPA", "cmm_score": "CMM"})
+    return long_df

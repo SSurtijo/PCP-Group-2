@@ -3,6 +3,7 @@
 # All functions use strict formatting: file-level header (###), function-level header (#), and step-by-step logic (#) comments.
 
 import streamlit as st
+from json_handler import rebuild_company_bundle_for_id
 import pandas as pd
 from utils.dataframe_utils import domain_overview
 from services import get_domain_filter_options_original, filter_domain_findings_original
@@ -30,9 +31,11 @@ def render_domain_tab(domain_items):
         with chart_tabs[0]:
             st.subheader("Domain Security Score Scatter Plot")
             try:
-                # Prepare all domains data for scatter plot
-                all_domains = [item["_raw"] for item in domain_items]
-                scatter_chart = domain_security_scatter_chart(all_domains)
+                # Use selected company ID for self-contained chart
+                selected_company_id = (
+                    domain_items[0]["_raw"].get("company_id") if domain_items else None
+                )
+                scatter_chart = domain_security_scatter_chart(selected_company_id)
                 if scatter_chart:
                     st.altair_chart(scatter_chart, use_container_width=True)
                 else:
@@ -44,8 +47,10 @@ def render_domain_tab(domain_items):
         with chart_tabs[1]:
             st.subheader("Findings Discovery Timeline")
             try:
-                all_domains = [item["_raw"] for item in domain_items]
-                timeline_chart = timeline_findings_chart(all_domains)
+                selected_company_id = (
+                    domain_items[0]["_raw"].get("company_id") if domain_items else None
+                )
+                timeline_chart = timeline_findings_chart(selected_company_id)
                 if timeline_chart:
                     st.altair_chart(timeline_chart, use_container_width=True)
                 else:
@@ -61,6 +66,12 @@ def render_domain_tab(domain_items):
         key="domain_select",
         format_func=lambda x: f"{x['_id']} — {x['_name']}",
     )
+    # Refresh selected company's JSON when domain is selected
+    selected_company_id = (
+        selected_domain["_raw"].get("company_id") if selected_domain else None
+    )
+    if selected_company_id:
+        rebuild_company_bundle_for_id(selected_company_id)
 
     # Try to get domain score and findings
     try:
@@ -82,6 +93,10 @@ def render_domain_tab(domain_items):
         ip_opt = f1.selectbox("IP", ["All"] + opts["ips"], index=0)
         type_opt = f2.selectbox("Type", ["All"] + opts["types"], index=0)
         level_opt = f3.selectbox("Severity level", ["All"] + opts["levels"], index=0)
+
+        # Refresh selected company's JSON when filter changes
+        if selected_company_id:
+            rebuild_company_bundle_for_id(selected_company_id)
 
         # Date range filter
         with st.container(border=True):

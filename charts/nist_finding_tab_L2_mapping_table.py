@@ -10,17 +10,14 @@ from nist.nist_mappings import CSF_L1_FUNCTION_FULL
 from nist.nist_helpers import get_function_from_code_or_ref
 
 
-# Converts numeric CMM rating to maturity label and color indicator.
-# Usage: get_maturity_label(rating)
-# Returns: tuple (label, color emoji)
 def get_maturity_label(rating):
-    if rating < 2.0:  # 1.0-1.9
+    if rating < 2.0:
         return "Weak", "🔴"
-    elif rating < 3.0:  # 2.0-2.9
+    elif rating < 3.0:
         return "Marginal", "🟡"
-    elif rating < 3.5:  # 3.0-3.4
+    elif rating < 3.5:
         return "Marginal/Strong", "🟢"
-    else:  # 3.5-4.0
+    else:
         return "Strong", "🟢"
 
 

@@ -4,46 +4,48 @@
 
 import altair as alt
 import pandas as pd
-import datetime
-from utils.dataframe_utils import domain_overview
+from json_handler import list_company_bundles
+from helpers import (
+    mean,
+    fmt_or_dash,
+    csv_upper,
+    csv_plain,
+    extract_rating,
+    detect_control_ref_col,
+)
 
 
-# Scatter plot of domain security scores and findings count.
-# Usage: domain_security_scatter_chart(domains_data, findings_data)
-# Returns: Altair chart or None
-def domain_security_scatter_chart(domains_data: list, findings_data: dict = None):
-    if not domains_data:
-        return None
-    # Prepare chart data
+def domain_security_scatter_chart(selected_company_id: int) -> alt.Chart:
+    # Load company bundle
+    from json_handler import load_company_bundle
+
+    b = load_company_bundle(selected_company_id) or {}
+    domains = b.get("domains") or []
     chart_data = []
-    for domain in domains_data:
+    for domain in domains:
         domain_id = domain.get("domain_id") or domain.get("id")
         domain_name = (
             domain.get("domain_name") or domain.get("domain") or f"domain-{domain_id}"
         )
-        # Get domain score and findings
+        score = domain.get("domain_score")
         try:
-            score, findings = domain_overview(domain_id)
-            if score is None:
-                score = 0
-            findings_count = len(findings)
-            chart_data.append(
-                {
-                    "domain_name": domain_name,
-                    "domain_score": float(score),
-                    "findings_count": findings_count,
-                }
-            )
+            score = float(score) if score is not None else 0
         except Exception:
-            # If fetch fails, use default values
-            chart_data.append(
-                {"domain_name": domain_name, "domain_score": 0, "findings_count": 0}
-            )
+            score = 0
+        findings_count = 0
+        fbc = domain.get("findings_by_category") or {}
+        for _, rows in fbc.items():
+            findings_count += len(rows or [])
+        chart_data.append(
+            {
+                "domain_name": domain_name,
+                "domain_score": score,
+                "findings_count": findings_count,
+            }
+        )
     if not chart_data:
         return None
-    # Create DataFrame
     df = pd.DataFrame(chart_data)
-    # Create scatter plot
     chart = (
         alt.Chart(df)
         .mark_circle(opacity=0.7, size=100)
@@ -157,30 +159,25 @@ def ip_findings_scatter_chart(domains_data: list):
     return chart
 
 
-# Timeline chart of findings discovery dates and scores.
-# Usage: timeline_findings_chart(domains_data)
-# Returns: Altair chart or None
-def timeline_findings_chart(domains_data: list):
-    if not domains_data:
-        return None
+def timeline_findings_chart(selected_company_id: int) -> alt.Chart:
+    from json_handler import load_company_bundle
 
+    b = load_company_bundle(selected_company_id) or {}
+    domains = b.get("domains") or []
     chart_data = []
-
-    for domain in domains_data:
+    for domain in domains:
         domain_id = domain.get("domain_id") or domain.get("id")
         domain_name = (
             domain.get("domain_name") or domain.get("domain") or f"domain-{domain_id}"
         )
-        try:
-            _, findings = domain_overview(domain_id)
-
-            for finding in findings:
+        fbc = domain.get("findings_by_category") or {}
+        for _, findings in fbc.items():
+            for finding in findings or []:
                 found_date = finding.get("found_date", "")
                 finding_score = finding.get("finding_score", 0)
                 finding_type = finding.get("finding_type", "Unknown")
                 ip_address = finding.get("ip_address", "Unknown IP")
-
-                if found_date:  # Only include records with dates
+                if found_date:
                     chart_data.append(
                         {
                             "domain_name": domain_name,
@@ -190,19 +187,11 @@ def timeline_findings_chart(domains_data: list):
                             "finding_type": finding_type,
                         }
                     )
-        except Exception:
-            # If fetch fails, skip this domain
-            pass
-
     if not chart_data:
         return None
-
     df = pd.DataFrame(chart_data)
-
-    # Convert date format
     df["found_date"] = pd.to_datetime(df["found_date"], errors="coerce")
     df = df.dropna(subset=["found_date"])
-
     chart = (
         alt.Chart(df)
         .mark_circle(opacity=0.7, size=80)
@@ -228,5 +217,4 @@ def timeline_findings_chart(domains_data: list):
         .configure_title(color="#444444", fontSize=16)
         .configure_legend(labelColor="#666666", titleColor="#666666")
     )
-
     return chart

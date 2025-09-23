@@ -42,9 +42,21 @@ FUNCTION_L1_IDENTIFIER_TO_FUNCTION_L2 = {
 
 ### Function (L2) → Controls
 FUNCTION_L2_TO_CONTROLS = {
-    "Organizational Context": ["GV.OC-02", "GV.OC-03", "GV.OC-04", "GV.OC-05"],
-    "Oversight": ["GV.OV-01", "GV.OV-02", "GV.OV-03"],
-    "Policy": ["GV.PO-01", "GV.PO-02"],
+    "Organizational Context": [
+        "GV.OC-02",
+        "GV.OC-03",
+        "GV.OC-04",
+        "GV.OC-05",
+    ],
+    "Oversight": [
+        "GV.OV-01",
+        "GV.OV-02",
+        "GV.OV-03",
+    ],
+    "Policy": [
+        "GV.PO-01",
+        "GV.PO-02",
+    ],
     "Risk Management Strategy": [
         "GV.RM-01",
         "GV.RM-02",
@@ -93,7 +105,12 @@ FUNCTION_L2_TO_CONTROLS = {
         "ID.RA-09",
         "ID.RA-10",
     ],
-    "Improvement": ["ID.IM-01", "ID.IM-02", "ID.IM-03", "ID.IM-04"],
+    "Improvement": [
+        "ID.IM-01",
+        "ID.IM-02",
+        "ID.IM-03",
+        "ID.IM-04",
+    ],
     "Identity & Access Control": [
         "PR.AA-01",
         "PR.AA-02",
@@ -102,8 +119,16 @@ FUNCTION_L2_TO_CONTROLS = {
         "PR.AA-05",
         "PR.AA-06",
     ],
-    "Awareness & Training": ["PR.AT-01", "PR.AT-02"],
-    "Data Security": ["PR.DS-01", "PR.DS-02", "PR.DS-10", "PR.DS-11"],
+    "Awareness & Training": [
+        "PR.AT-01",
+        "PR.AT-02",
+    ],
+    "Data Security": [
+        "PR.DS-01",
+        "PR.DS-02",
+        "PR.DS-10",
+        "PR.DS-11",
+    ],
     "Platform Security": [
         "PR.PS-01",
         "PR.PS-02",
@@ -133,10 +158,27 @@ FUNCTION_L2_TO_CONTROLS = {
         "DE.AE-07",
         "DE.AE-08",
     ],
-    "Incident Management": ["RS.MA-01", "RS.MA-02", "RS.MA-03", "RS.MA-04", "RS.MA-05"],
-    "Incident Analysis": ["RS.AN-03", "RS.AN-06", "RS.AN-07", "RS.AN-08"],
-    "Incident Response & Reporting": ["RS.CO-02", "RS.CO-03"],
-    "Incident Mitigation": ["RS.MI-01", "RS.MI-02"],
+    "Incident Management": [
+        "RS.MA-01",
+        "RS.MA-02",
+        "RS.MA-03",
+        "RS.MA-04",
+        "RS.MA-05",
+    ],
+    "Incident Analysis": [
+        "RS.AN-03",
+        "RS.AN-06",
+        "RS.AN-07",
+        "RS.AN-08",
+    ],
+    "Incident Response & Reporting": [
+        "RS.CO-02",
+        "RS.CO-03",
+    ],
+    "Incident Mitigation": [
+        "RS.MI-01",
+        "RS.MI-02",
+    ],
     "Incident Recovery Plan Execution": [
         "RC.RP-01",
         "RC.RP-02",
@@ -145,7 +187,10 @@ FUNCTION_L2_TO_CONTROLS = {
         "RC.RP-05",
         "RC.RP-06",
     ],
-    "Incident Recovery Communication": ["RC.CO-03", "RC.CO-04"],
+    "Incident Recovery Communication": [
+        "RC.CO-03",
+        "RC.CO-04",
+    ],
 }
 
 ### External Findings → Controls (per your remap)

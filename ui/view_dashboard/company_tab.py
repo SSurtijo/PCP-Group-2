@@ -7,7 +7,7 @@ import streamlit as st
 import pandas as pd
 from utils.dataframe_utils import to_df, stringify_nested
 from services import get_company_category_scores_df, company_summary
-from charts.charts_company import company_category_scores_chart
+from charts.charts_mixed import company_category_scores_chart
 from nist.nist_helpers import summarize_csf_for_category
 from json_handler import load_company_bundle
 
@@ -188,30 +188,3 @@ def render_company_tab(companies_payload, selected_company_id, company_domains):
                 st.info("No Category GPA data available.")
             else:
                 st.dataframe(cat_df, use_container_width=True)  # show row index
-
-    # Step 5: Show category graph
-    with st.expander("Category Graph", expanded=True):
-        sort_label = st.selectbox(
-            "Sort by",
-            ["A → Z (Category)", "Score: High → Low", "Score: Low → High"],
-            index=1,
-            key="category_graph_sort",
-        )
-        sort_mode = {
-            "A → Z (Category)": "category_asc",
-            "Score: High → Low": "score_desc",
-            "Score: Low → High": "score_asc",
-        }[sort_label]
-
-        scores_df = get_company_category_scores_df(selected_company_id)
-        chart = company_category_scores_chart(
-            scores_df,
-            height_per_bar=80,
-            bar_size=45,
-            label_padding=30,
-            sort_mode=sort_mode,
-        )
-        if chart is None:
-            st.info("No category scores available.")
-        else:
-            st.altair_chart(chart, use_container_width=True)

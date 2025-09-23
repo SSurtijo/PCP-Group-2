@@ -15,7 +15,7 @@ from ui.view_dashboard.company_tab import render_company_tab
 from ui.view_dashboard.domain_tab import render_domain_tab
 from ui.view_dashboard.nist_finding_tab import render_nist_finding_tab
 
-from json_handler import build_all_company_bundles
+from json_handler import build_all_company_bundles, rebuild_company_bundle_for_id
 
 build_all_company_bundles()  # overwrite data/{company_id}_data.json each run
 
@@ -40,6 +40,8 @@ def show_dashboard(companies_payload):
     options, mapping = list_company_options(companies_payload)
     selected_company_label = st.selectbox("Company", options, index=0)
     selected_company_id = mapping.get(selected_company_label)
+    # Refresh selected company's JSON when selected
+    rebuild_company_bundle_for_id(selected_company_id)
     try:
         domains_payload = domains()
     except Exception as e:
@@ -64,6 +66,8 @@ def show_dashboard(companies_payload):
 
 view = st.sidebar.radio("Supplier Cyber Risk", ["Dashboard", "Companies"], index=0)
 if view == "Companies":
+    build_all_company_bundles()
     show_all_companies(companies_payload)
 else:
+    build_all_company_bundles()
     show_dashboard(companies_payload)
