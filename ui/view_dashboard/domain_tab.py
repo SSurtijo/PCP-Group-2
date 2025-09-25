@@ -1,6 +1,7 @@
-### domain_tab.py
-# Renders the Domain tab for PCP project dashboard UI.
-# All functions use strict formatting: file-level header (###), function-level header (#), and step-by-step logic (#) comments.
+###
+# File: ui/view_dashboard/domain_tab.py
+# Description: Renders the Domain tab for PCP project dashboard UI.
+###
 
 import streamlit as st
 from json_handler import rebuild_company_bundle_for_id
@@ -18,20 +19,20 @@ from charts.domain_scatter_chart import (
 # Inputs: domain_items (list of domain dicts)
 # Outputs: None (renders tab in UI)
 def render_domain_tab(domain_items):
-    # Check if domain_items is empty
+    """Renders the 'Domain' tab with metrics, charts, filters, and findings table using Streamlit."""
+    """Check if domain_items is empty"""
     if not domain_items:
         st.info("This company has no domains.")
         return
 
-    # Add scatter chart analysis section - showing ALL domains
+    """Add scatter chart analysis section - showing ALL domains"""
     with st.expander("Domain Security Analysis Charts", expanded=True):
         chart_tabs = st.tabs(["Security Score Distribution", "Timeline Trends"])
 
-        # Security Score Distribution tab
+        """Security Score Distribution tab"""
         with chart_tabs[0]:
             st.subheader("Domain Security Score Scatter Plot")
             try:
-                # Use selected company ID for self-contained chart
                 selected_company_id = (
                     domain_items[0]["_raw"].get("company_id") if domain_items else None
                 )
@@ -43,7 +44,7 @@ def render_domain_tab(domain_items):
             except Exception as e:
                 st.error(f"Failed to generate scatter plot: {e}")
 
-        # Timeline Trends tab
+        """Timeline Trends tab"""
         with chart_tabs[1]:
             st.subheader("Findings Discovery Timeline")
             try:
@@ -58,7 +59,7 @@ def render_domain_tab(domain_items):
             except Exception as e:
                 st.error(f"Failed to generate timeline chart: {e}")
 
-    # Select domain from dropdown
+    """Select domain from dropdown"""
     selected_domain = st.selectbox(
         "Domain",
         domain_items,
@@ -66,46 +67,42 @@ def render_domain_tab(domain_items):
         key="domain_select",
         format_func=lambda x: f"{x['_id']} — {x['_name']}",
     )
-    # Refresh selected company's JSON when domain is selected
+    """Refresh selected company's JSON when domain is selected"""
     selected_company_id = (
         selected_domain["_raw"].get("company_id") if selected_domain else None
     )
     if selected_company_id:
         rebuild_company_bundle_for_id(selected_company_id)
 
-    # Try to get domain score and findings
+    """Try to get domain score and findings"""
     try:
         domain_score, findings = domain_overview(selected_domain["_id"])
     except Exception as e:
         st.error(f"Failed to load domain overview: {e}")
         domain_score, findings = None, []
 
-    # Show metrics for selected domain
+    """Show metrics for selected domain"""
     c1, c2 = st.columns(2)
     c1.metric("Score", f"{(domain_score or 0):.2f}")
     c2.metric("Total Finding", f"{len(findings)}")
 
-    # Filters + table (original UX)
+    """Filters + table (original UX)"""
     opts, orig_cols = get_domain_filter_options_original(findings)
     with st.expander("Filters", expanded=True):
-        # Filter columns
+        """Filter columns"""
         f1, f2, f3 = st.columns(3)
         ip_opt = f1.selectbox("IP", ["All"] + opts["ips"], index=0)
         type_opt = f2.selectbox("Type", ["All"] + opts["types"], index=0)
         level_opt = f3.selectbox("Severity level", ["All"] + opts["levels"], index=0)
 
-        # Refresh selected company's JSON when filter changes
-        if selected_company_id:
-            rebuild_company_bundle_for_id(selected_company_id)
-
-        # Date range filter
+        """Date range filter"""
         with st.container(border=True):
             st.caption("Date range")
             d1, d2 = st.columns(2)
             from_opt = d1.selectbox("From", ["Any"] + opts["dates"], index=0)
             to_opt = d2.selectbox("To", ["Any"] + opts["dates"], index=0)
 
-        # Filter findings based on selected options
+        """Filter findings based on selected options"""
         fdf = filter_domain_findings_original(
             findings,
             ip=ip_opt,
@@ -114,7 +111,7 @@ def render_domain_tab(domain_items):
             start_date=from_opt,
             end_date=to_opt,
         )
-        # Check if date range is valid
+        """Check if date range is valid"""
         if (
             from_opt != "Any"
             and to_opt != "Any"
@@ -124,7 +121,7 @@ def render_domain_tab(domain_items):
             st.warning("'From' date is after 'To' date — showing unfiltered results.")
             fdf = findings
 
-        # Prepare DataFrame for display
+        """Prepare DataFrame for display"""
         df = pd.DataFrame(fdf)
         if not df.empty:
             front = [c for c in orig_cols if c in df.columns]

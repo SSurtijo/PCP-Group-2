@@ -1,6 +1,7 @@
-### nist_finding_tab_L2_mapping_table.py
-# Renders NIST CSF L2 domain maturity table for PCP project.
-# All functions use strict formatting: file-level header (###), function-level header (#), and step-by-step logic (#) comments.
+###
+# File: charts/nist_finding_tab_L2_mapping_table.py
+# Description: Streamlit table builder for NIST CSF L2 domain maturity mapping.
+###
 
 import streamlit as st
 import pandas as pd
@@ -11,6 +12,7 @@ from nist.nist_helpers import get_function_from_code_or_ref
 
 
 def get_maturity_label(rating):
+    """Map CMM rating to maturity label and indicator."""
     if rating < 2.0:
         return "Weak", "🔴"
     elif rating < 3.0:
@@ -21,47 +23,32 @@ def get_maturity_label(rating):
         return "Strong", "🟢"
 
 
-# Renders the L2 Domains table showing NIST CSF maturity by domain.
-# Usage: render_l2_domains_table(selected_company_id)
-# Returns: None (renders table in UI)
 def render_l2_domains_table(selected_company_id=None):
+    """Render NIST CSF L2 domain maturity table for selected company."""
     st.caption("Detailed view of maturity per NIST CSF L2 Domain using CMM ratings")
-
-    # Fetch CMM ratings data from API
     raw_data = get_internal_scan(limit=1000)
     df_cmm = to_df(raw_data)
-
+    """Handle empty input dataframe."""
     if df_cmm.empty:
         st.warning("No CMM ratings data available")
         return
-
-    # Filter by company if specified
+    """Filter by company if selected."""
     if selected_company_id is not None and "company_id" in df_cmm.columns:
         try:
             df_cmm = df_cmm[
                 df_cmm["company_id"].astype(str) == str(selected_company_id)
             ]
-        except (TypeError, ValueError) as e:
-            st.warning(f"Company ID filtering issue: {e}. Showing all data.")
-
-    # Check required columns
+        except (TypeError, ValueError):
+            st.warning("Company ID filtering issue. Showing all data.")
+    """Check for required columns."""
     required_cols = ["control_ref", "cmm_rating"]
     missing_cols = [col for col in required_cols if col not in df_cmm.columns]
     if missing_cols:
         st.error(f"Missing required columns: {missing_cols}")
-        st.write("Available columns:", df_cmm.columns.tolist())
         return
-
-    # Build domain ratings using the actual API data approach
-    domain_ratings = []
-
-    # Get unique domains from API data and group by them
-    if "domain" not in df_cmm.columns:
-        st.error("Missing 'domain' column in CMM data")
-        st.write("Available columns:", df_cmm.columns.tolist())
-        return
+    """Aggregate ratings by domain."""
     unique_domains = df_cmm["domain"].dropna().unique()
-
+    domain_ratings = []
     for api_domain_name in unique_domains:
         domain_data = df_cmm[df_cmm["domain"] == api_domain_name]
         ratings_for_domain = []
@@ -72,7 +59,6 @@ def render_l2_domains_table(selected_company_id=None):
                     ratings_for_domain.append(float(rating))
             except (TypeError, ValueError, KeyError):
                 continue
-
         if ratings_for_domain:
             avg_rating = sum(ratings_for_domain) / len(ratings_for_domain)
             try:
@@ -81,7 +67,6 @@ def render_l2_domains_table(selected_company_id=None):
                 function_name = CSF_L1_FUNCTION_FULL.get(function_code, function_code)
             except (IndexError, KeyError):
                 function_name = "Unknown"
-
             domain_ratings.append(
                 {
                     "function": function_name,
@@ -90,11 +75,10 @@ def render_l2_domains_table(selected_company_id=None):
                     "control_count": len(ratings_for_domain),
                 }
             )
-
+    """Handle case with no valid domain ratings."""
     if not domain_ratings:
         st.warning("No valid data found for the selected company")
         return
-
     domain_ratings = pd.DataFrame(domain_ratings)
     domain_ratings["cmm_rating"] = pd.to_numeric(
         domain_ratings["cmm_rating"], errors="coerce"
@@ -102,13 +86,10 @@ def render_l2_domains_table(selected_company_id=None):
     domain_ratings["control_count"] = pd.to_numeric(
         domain_ratings["control_count"], errors="coerce"
     ).fillna(0)
-
-    # Add maturity labels
     domain_ratings[["label", "indicator"]] = domain_ratings["cmm_rating"].apply(
         lambda x: pd.Series(get_maturity_label(x))
     )
-
-    # Sort by function and domain
+    """Categorize and sort functions."""
     function_order = ["Govern", "Identify", "Protect", "Detect", "Respond", "Recover"]
     try:
         domain_ratings["function"] = domain_ratings["function"].astype(str)
@@ -123,11 +104,10 @@ def render_l2_domains_table(selected_company_id=None):
             domain_ratings["function"], categories=all_categories, ordered=True
         )
         domain_ratings = domain_ratings.sort_values(["function", "domain"])
-    except (TypeError, ValueError) as e:
-        st.warning(f"Function categorization issue: {e}. Using simple sorting.")
+    except (TypeError, ValueError):
+        st.warning("Function categorization issue. Using simple sorting.")
         domain_ratings = domain_ratings.sort_values(["domain"])
-
-    # Summary statistics
+    """Display summary metrics for domain maturity levels."""
     col1, col2, col3, col4 = st.columns(4)
     try:
         domain_ratings["cmm_rating"] = pd.to_numeric(
@@ -155,8 +135,8 @@ def render_l2_domains_table(selected_company_id=None):
         with col4:
             strong_count = len(domain_ratings[domain_ratings["cmm_rating"] >= 3.5])
             st.metric("Strong Domains", int(strong_count))
-    except (TypeError, ValueError) as e:
-        st.warning(f"Error calculating summary statistics: {e}. Using default values.")
+    except (TypeError, ValueError):
+        st.warning("Error calculating summary statistics. Using default values.")
         with col1:
             st.metric("Weak Domains", 0)
         with col2:
@@ -165,14 +145,11 @@ def render_l2_domains_table(selected_company_id=None):
             st.metric("Marginal/Strong Domains", 0)
         with col4:
             st.metric("Strong Domains", 0)
-
-    # Prepare data for display with merged function cells
+    """Prepare table for display."""
     display_df = domain_ratings[
         ["function", "domain", "cmm_rating", "label", "indicator"]
     ].copy()
     display_df["function"] = display_df["function"].astype(str)
-
-    # Create a version where function names are only shown for the first occurrence
     merged_display_df = display_df.copy()
     prev_function = None
     for idx, row in merged_display_df.iterrows():
@@ -180,18 +157,16 @@ def render_l2_domains_table(selected_company_id=None):
             merged_display_df.at[idx, "function"] = ""
         else:
             prev_function = row["function"]
-
     merged_display_df = merged_display_df.rename(
-        columns={
+        {
             "function": "Function (L1)",
             "domain": "Domain (L2)",
             "cmm_rating": "Rating",
             "label": "Maturity Level",
             "indicator": "Status",
-        }
+        },
+        axis=1,
     )
-
-    # Display the table
     try:
         merged_display_df["Rating"] = pd.to_numeric(
             merged_display_df["Rating"], errors="coerce"
@@ -208,8 +183,6 @@ def render_l2_domains_table(selected_company_id=None):
                 "Status": st.column_config.TextColumn(width="small"),
             },
         )
-    except Exception as e:
-        st.warning(
-            f"Error displaying table with formatting: {e}. Showing simple table."
-        )
+    except Exception:
+        st.warning("Error displaying table with formatting. Showing simple table.")
         st.dataframe(merged_display_df, use_container_width=True, hide_index=True)

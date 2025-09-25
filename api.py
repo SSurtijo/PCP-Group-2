@@ -20,13 +20,16 @@ def _request(url: str) -> Any:
     # Description: Core GET request for API endpoints.
     # Usage: _request(url)
     # Returns: JSON, float, or raises error
+    """Send GET request to API endpoint"""
     r = _session.get(url, timeout=20, headers={"Accept": "application/json"})
     r.raise_for_status()
     try:
+        """Try to parse JSON response"""
         return r.json()
     except ValueError:
         t = (r.text or "").strip()
         try:
+            """Try to parse as float if not JSON"""
             return float(t)
         except Exception:
             raise RuntimeError(f"Non-JSON response from {url}\n{t[:800]}")
@@ -37,12 +40,15 @@ def _get(path: str) -> Any:
     # Description: Build the full URL and fetch it. Retries on trailing slash mismatch.
     # Usage: _get(path)
     # Returns: API response
+    """Build full API URL"""
     url = f"{BASE}{path if path.startswith('/') else '/'+path}"
     try:
+        """Request URL"""
         return _request(url)
     except Exception:
         alt = url[:-1] if url.endswith("/") else url + "/"
         if alt != url:
+            """Try alternate URL with/without trailing slash"""
             return _request(alt)
         raise
 
@@ -52,6 +58,7 @@ def _items(x: Union[Dict, List]) -> Any:
     # Description: Returns the 'items' list from ORDS endpoints if present, else original object.
     # Usage: _items(x)
     # Returns: list or original object
+    """Return 'items' list if present, else original object"""
     return x.get("items", x) if isinstance(x, dict) else x
 
 

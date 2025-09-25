@@ -1,31 +1,32 @@
-### helpers.py
-# Centralized utility functions for PCP project (used by charts/ and other modules)
-# Only pure utilities (no chart libs, no I/O, no service logic)
+###
+# File: helpers.py
+# Description: Centralized utility functions for PCP project (used by charts/ and other modules). Only pure utilities (no chart libs, no I/O, no service logic).
+###
 
 from typing import Iterable, Sequence, Any
 import math
 
 
-# Joins items as uppercase CSV string, sorted.
 def csv_upper(items: Iterable[str]) -> str:
+    """Convert items to uppercase and join as CSV"""
     vals = [str(x).upper() for x in items if str(x).strip()]
     return ", ".join(sorted(vals)) if vals else "-"
 
 
-# Joins items as plain CSV string, sorted.
 def csv_plain(items: Iterable[str]) -> str:
+    """Convert items to plain string and join as CSV"""
     vals = [str(x).strip() for x in items if str(x).strip()]
     return ", ".join(sorted(vals)) if vals else "-"
 
 
-# Calculates the mean of a sequence of floats, ignoring None and NaN.
 def mean(values: Sequence[float]) -> float:
+    """Filter out None/NaN and calculate mean"""
     xs = [float(v) for v in values if v is not None and not math.isnan(float(v))]
     return (sum(xs) / len(xs)) if xs else float("nan")
 
 
-# Formats a value as a float string or dash if None/NaN/empty.
 def fmt_or_dash(val: float | str | None, decimals: int = 2) -> str:
+    """Format value as float string or dash if None/NaN/empty"""
     if val is None:
         return "-"
     try:
@@ -38,8 +39,8 @@ def fmt_or_dash(val: float | str | None, decimals: int = 2) -> str:
         return s if s else "-"
 
 
-# Extracts a float rating from a row dict using typical control-level keys.
 def extract_rating(row: dict) -> float | None:
+    """Extract float rating from row using typical keys"""
     keys = (
         "cmm_rating",
         "rating",
@@ -70,8 +71,8 @@ def extract_rating(row: dict) -> float | None:
     return None
 
 
-# Detects the control reference column name in a DataFrame.
 def detect_control_ref_col(df: Any) -> str | None:
+    """Detect control reference column name in DataFrame"""
     lower_cols = {c.lower(): c for c in df.columns}
     candidates_exact = [
         "control_ref",

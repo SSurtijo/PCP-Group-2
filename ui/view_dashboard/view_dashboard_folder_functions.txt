@@ -1,4 +1,3 @@
-
 # view_dashboard functions
 
 1. render_company_tab(companies_payload, selected_company_id, company_domains)

@@ -1,6 +1,7 @@
-### internal_csf_charts.py
-# Chart and table functions for internal CSF maturity in PCP project.
-# All functions use strict formatting: file-level header (###), function-level header (#), and step-by-step logic (#) comments.
+###
+# File: charts/internal_csf_charts.py
+# Description: Altair chart builders for internal controls and CSF maturity. Used in dashboard visualizations.
+###
 
 import altair as alt
 import pandas as pd
@@ -17,10 +18,8 @@ EXTERNAL_FINDINGS_TO_CONTROLS_NORM = {
 }
 
 
-# Orders findings by CATEGORY_NAMES if available, else keeps API order.
-# Usage: _ordered_findings(api_findings)
-# Returns: ordered list of findings
 def _ordered_findings(api_findings: list[str]) -> list[str]:
+    """Order findings according to CATEGORY_NAMES if available."""
     if CATEGORY_NAMES:
         wanted = [c for c in CATEGORY_NAMES if c in set(api_findings)]
         if wanted:
@@ -28,19 +27,18 @@ def _ordered_findings(api_findings: list[str]) -> list[str]:
     return api_findings
 
 
-# GPA-only fallback chart (no internal ratings available).
-# Usage: _fallback_chart(scores_df)
-# Returns: Altair chart or None
 def _fallback_chart(scores_df: pd.DataFrame):
+    """Fallback: Bar chart of findings GPA if no internal data."""
+    """Check for required columns"""
     gpa_col = next((c for c in ("category_gpa", "gpa") if c in scores_df.columns), None)
     if not gpa_col or "Category" not in scores_df.columns:
         return None
-
+    """Filter findings to those with controls"""
     api_findings = [str(x).strip() for x in scores_df["Category"].dropna().tolist()]
     findings = [f for f in api_findings if f in EXTERNAL_FINDINGS_TO_CONTROLS_NORM]
     if not findings:
         return None
-
+    """Prepare DataFrame for chart"""
     df = (
         scores_df[scores_df["Category"].isin(findings)][["Category", gpa_col]]
         .rename(columns={gpa_col: "findings_gpa"})
@@ -51,10 +49,10 @@ def _fallback_chart(scores_df: pd.DataFrame):
     df["findings_gpa_disp"] = df["findings_gpa"].apply(lambda v: fmt_or_dash(v, 2))
     df["controls_disp"] = "-"
     df["cmm_mean_disp"] = "-"
-
+    """Set category order"""
     order = _ordered_findings(findings)
     df["Category"] = pd.Categorical(df["Category"], categories=order, ordered=True)
-
+    """Build Altair chart"""
     base = alt.Chart(df).encode(
         x=alt.X("Category:N", sort=order, title=None),
         y=alt.Y(
@@ -73,7 +71,8 @@ def _fallback_chart(scores_df: pd.DataFrame):
 
 
 def csf_maturity_line_chart(selected_company_id: int) -> alt.Chart:
-    # Load scores and internal scan
+    """Bar chart of findings GPA with mapped controls for a company."""
+    """Load company category scores and internal scan data"""
     from services import get_company_category_scores_df
 
     scores_df = get_company_category_scores_df(selected_company_id)
@@ -83,10 +82,12 @@ def csf_maturity_line_chart(selected_company_id: int) -> alt.Chart:
         internal_rows = []
     if scores_df is None or scores_df.empty or "Category" not in scores_df.columns:
         return None
+    """Filter findings to those with controls"""
     api_findings = [str(x).strip() for x in scores_df["Category"].dropna().tolist()]
     findings = [f for f in api_findings if f in EXTERNAL_FINDINGS_TO_CONTROLS_NORM]
     if not findings:
         return None
+    """Prepare internal controls DataFrame"""
     df_ctrl = pd.DataFrame(internal_rows or [])
     if df_ctrl.empty:
         return _fallback_chart(scores_df)
@@ -97,6 +98,7 @@ def csf_maturity_line_chart(selected_company_id: int) -> alt.Chart:
     df_ctrl["control_ref_norm"] = df_ctrl[ctrl_col].apply(norm_ref)
     df_ctrl["rating_val"] = df_ctrl.apply(extract_rating, axis=1)
     df_ctrl = df_ctrl.dropna(subset=["control_ref_norm", "rating_val"])
+    """Map findings to GPA"""
     gpa_col = next((c for c in ("category_gpa", "gpa") if c in scores_df.columns), None)
     finding_gpa = {}
     if gpa_col:
@@ -108,6 +110,7 @@ def csf_maturity_line_chart(selected_company_id: int) -> alt.Chart:
             if pd.notna(val):
                 finding_gpa[name] = float(val)
     ctrl_index = df_ctrl.set_index("control_ref_norm")["rating_val"]
+    """Build chart rows"""
     rows = []
     for finding in findings:
         mapped_controls = controls_for_finding(finding)
@@ -121,6 +124,7 @@ def csf_maturity_line_chart(selected_company_id: int) -> alt.Chart:
                 "controls_disp": controls_disp,
             }
         )
+    """Prepare DataFrame and build Altair chart"""
     df = pd.DataFrame(rows)
     order = _ordered_findings(findings)
     df["Finding"] = pd.Categorical(df["Finding"], categories=order, ordered=True)
@@ -141,34 +145,27 @@ def csf_maturity_line_chart(selected_company_id: int) -> alt.Chart:
     return bar.configure_axis(labelColor="white", titleColor="white")
 
 
-# Builds a table of CSF controls and CMM scores for a company.
-# Usage: build_csf_controls_table_df(scores_df, internal_rows, company_id)
-# Returns: DataFrame with columns: company_id, category, nist_control, cmm_score
 def build_csf_controls_table_df(
     scores_df: pd.DataFrame,
     internal_rows: list[dict] | None,
     company_id,
 ) -> pd.DataFrame:
+    """Builds a table of CSF controls and CMM scores for a company."""
+    """Validate input"""
     if scores_df is None or scores_df.empty:
         return pd.DataFrame()
-
     df_ctrl = pd.DataFrame(internal_rows or [])
     if df_ctrl.empty:
         return pd.DataFrame()
-
     ctrl_col = detect_control_ref_col(df_ctrl)
     if not ctrl_col:
         return pd.DataFrame()
-
     df_ctrl = df_ctrl.copy()
-    # Standardize control references using norm_ref
     df_ctrl["control_ref_norm"] = df_ctrl[ctrl_col].apply(norm_ref)
     df_ctrl["rating_val"] = df_ctrl.apply(extract_rating, axis=1)
     df_ctrl = df_ctrl.dropna(subset=["control_ref_norm", "rating_val"])
-
     ctrl_index = df_ctrl.set_index("control_ref_norm")["rating_val"]
-
-    # Which categories (findings) to show
+    """Determine findings to include"""
     api_findings = (
         [str(x).strip() for x in scores_df["Category"].dropna().tolist()]
         if "Category" in scores_df.columns
@@ -179,13 +176,12 @@ def build_csf_controls_table_df(
         findings = [
             f for f in CATEGORY_NAMES if f in EXTERNAL_FINDINGS_TO_CONTROLS_NORM
         ]
-
+    """Build table rows"""
     rows = []
     for finding in _ordered_findings(findings):
         mapped_controls = EXTERNAL_FINDINGS_TO_CONTROLS_NORM.get(finding, [])
         for c in sorted(mapped_controls):
             if c not in ctrl_index:
-                # Skip controls that don't have a rating in internal data
                 continue
             rows.append(
                 {
@@ -195,5 +191,5 @@ def build_csf_controls_table_df(
                     "cmm_score": float(ctrl_index[c]),
                 }
             )
-
+    """Return DataFrame"""
     return pd.DataFrame(rows)

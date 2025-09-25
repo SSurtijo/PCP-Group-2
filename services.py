@@ -16,8 +16,10 @@ def get_company_category_scores_df(company_id) -> pd.DataFrame:
     # Description: Reads category scores and GPA from a company's bundle JSON file and returns them as a pandas DataFrame.
     # Usage: get_company_category_scores_df(company_id)
     # Returns: pandas DataFrame with category scores and GPA
+    """Load company bundle JSON"""
     b = load_company_bundle(company_id) or {}
     rows = []
+    """Extract category scores and GPA for each category"""
     for cat in b.get("categories") or []:
         label = cat.get("Category")
         score = cat.get("category_score")
@@ -31,11 +33,13 @@ def get_company_category_scores_df(company_id) -> pd.DataFrame:
         except Exception:
             gpa = None
         rows.append({"Category": label, "category_score": score, "category_gpa": gpa})
+    """Create DataFrame from extracted rows"""
     out = pd.DataFrame(rows)
     if not out.empty and "category_score" in out.columns:
         out["category_score"] = pd.to_numeric(
             out["category_score"], errors="coerce"
         ).fillna(0)
+    """Return DataFrame with category scores and GPA"""
     return out
 
 

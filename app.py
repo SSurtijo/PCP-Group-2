@@ -37,16 +37,19 @@ def show_dashboard(companies_payload):
     # Usage: show_dashboard(companies_payload)
     # Returns: None (renders dashboard UI)
     st.write("### Dashboard")
+    # Get company options and mapping
     options, mapping = list_company_options(companies_payload)
     selected_company_label = st.selectbox("Company", options, index=0)
     selected_company_id = mapping.get(selected_company_label)
     # Refresh selected company's JSON when selected
     rebuild_company_bundle_for_id(selected_company_id)
     try:
+        # Load domains payload
         domains_payload = domains()
     except Exception as e:
         st.warning(f"Could not load domains: {e}")
         domains_payload = []
+    # Filter domains for selected company
     company_domains = filter_domains_for_company(domains_payload, selected_company_id)
     domain_items = []
     for d in company_domains:
@@ -55,15 +58,19 @@ def show_dashboard(companies_payload):
             d.get("domain_name") or d.get("domain") or d.get("name") or f"domain-{did}"
         )
         domain_items.append({"_id": did, "_name": dname, "_raw": d})
+    # Create dashboard tabs
     tab_company, tab_domain, tab_nist = st.tabs(["Company", "Domain", "CSF"])
     with tab_company:
         render_company_tab(companies_payload, selected_company_id, company_domains)
     with tab_domain:
+        """Render domain tab"""
         render_domain_tab(domain_items)
     with tab_nist:
+        """Render NIST finding tab"""
         render_nist_finding_tab(selected_company_id, company_domains)
 
 
+# Sidebar navigation for dashboard/companies
 view = st.sidebar.radio("Supplier Cyber Risk", ["Dashboard", "Companies"], index=0)
 if view == "Companies":
     build_all_company_bundles()

@@ -1,7 +1,7 @@
-# json_handler.py
-# Disk-backed company bundles: one JSON per company at data/{company_id}_data.json
-# Views read these bundles (except CMM/internal which stays live)
-# You can call build_company_bundle(...) wherever you prefer.
+###
+# File: json_handler.py
+# Description: Disk-backed company bundles. Handles reading/writing JSON for each company in data/{company_id}_data.json.
+###
 
 from __future__ import annotations
 import os
@@ -26,10 +26,12 @@ DATA_ROOT = os.getenv("DATA_DIR", "data")
 
 # --------------------------- small fs helpers --------------------------------
 def _ensure_dir():
+    """Ensure data directory exists"""
     os.makedirs(DATA_ROOT, exist_ok=True)
 
 
 def _atomic_write_json(path: str, data: dict):
+    """Write JSON atomically to disk"""
     d = os.path.dirname(path)
     os.makedirs(d, exist_ok=True)
     fd, tmp = tempfile.mkstemp(prefix=".tmp_", dir=d, text=True)
@@ -46,6 +48,7 @@ def _atomic_write_json(path: str, data: dict):
 
 
 def _strip_transport(obj: Any) -> Any:
+    """Recursively remove transport/meta keys from dict/list"""
     if isinstance(obj, dict):
         out = {}
         for k, v in obj.items():

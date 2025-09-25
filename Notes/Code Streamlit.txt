@@ -1,8 +1,0 @@
-streamlit run filename.py (localhost)
-
-pip install black
-
-black . (Format code)
-
-black PCP-Group-2-v1
-cd ..

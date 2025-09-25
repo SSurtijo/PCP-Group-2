@@ -1,26 +1,3 @@
-
-# utils/dataframe_utils.py functions
-
-1. CATEGORY_NAMES
-- List of risk categories used throughout the project.
-- Used in services.py, charts, and UI modules (for category logic)
-
-2. extract_number(x)
-- Extracts a float from int, float, str, or dict (score extraction).
-- Used in services.py, charts, and UI modules (for score extraction)
-
-3. to_df(data)
-- Converts a list of dicts, dict, or DataFrame to a pandas DataFrame.
-- Used in services.py, charts, and UI modules (for table display)
-
-4. stringify_nested(df)
-- Converts nested dict/list columns to JSON strings for display.
-- Used in services.py, charts, and UI modules (for readable tables)
-
-5. domain_overview(domain_id)
-- Gets the domain score and findings for a given domain_id.
-- Used in services.py, charts, and UI modules (for domain analysis)
-
 # utils/normalization.py functions
 
 1. norm_ref(s)
@@ -30,3 +7,25 @@
 2. prefix(x)
 - Returns the prefix from a control reference (e.g., PR.PS-01 → PR.PS).
 - Used in nist_helpers.py, charts, and NIST mapping logic (for control mapping)
+
+# utils/dataframe_utils.py functions
+
+1. to_df(data)
+- Converts a list of dicts, dict, or DataFrame to a pandas DataFrame.
+- Used in services.py, charts, and UI modules (for table display)
+
+2. extract_number(x)
+- Extracts a float from int, float, str, or dict (score extraction).
+- Used in services.py, charts, and UI modules (for score extraction)
+
+3. domain_overview(domain_id)
+- Gets the domain score and findings for a given domain_id.
+- Used in services.py, charts, and UI modules (for domain analysis)
+
+4. stringify_nested(df)
+- Converts nested dict/list columns to JSON strings for display.
+- Used in services.py, charts, and UI modules (for readable tables)
+
+5. CATEGORY_NAMES
+- List of risk categories used throughout the project.
+- Used in services.py, charts, and UI modules (for category logic)

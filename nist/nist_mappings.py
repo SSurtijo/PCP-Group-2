@@ -1,10 +1,11 @@
 ###
 # File: nist/nist_mappings.py
 # Description: NIST CSF function and control mappings for PCP project.
-# Defines L1/L2 function names, control mappings, and external finding mappings.
+# Defines L1/L2 function names, control mappings, and external finding mappings. Used by helpers to resolve controls, functions, and findings.
 ###
 
 ### CSF function names (Level 1)
+# Maps L1 function codes (GV, ID, PR, etc.) to their full names.
 CSF_L1_FUNCTION_FULL = {
     "GV": "Govern",
     "ID": "Identify",
@@ -15,6 +16,7 @@ CSF_L1_FUNCTION_FULL = {
 }
 
 ### Function Identifier → Function Name (L1→L2)
+# Maps L1 function identifiers (e.g. GV.OC) to L2 function names (e.g. Organizational Context).
 FUNCTION_L1_IDENTIFIER_TO_FUNCTION_L2 = {
     "GV.OC": "Organizational Context",
     "GV.OV": "Oversight",
@@ -41,6 +43,7 @@ FUNCTION_L1_IDENTIFIER_TO_FUNCTION_L2 = {
 }
 
 ### Function (L2) → Controls
+# Maps L2 function names to lists of control references. Used to resolve which controls belong to each L2.
 FUNCTION_L2_TO_CONTROLS = {
     "Organizational Context": [
         "GV.OC-02",
@@ -193,12 +196,32 @@ FUNCTION_L2_TO_CONTROLS = {
     ],
 }
 
-### External Findings → Controls (per your remap)
+
+### External Finding → Controls
+# Maps external finding categories to lists of control references. Used by helpers to resolve which controls are relevant for each finding.
 EXTERNAL_FINDINGS_TO_CONTROLS = {
-    "Attack Surface": ["ID.AM-01", "ID.RA-01"],
-    "Vulnerability Exposure": ["PR.PS-01", "DE.CM-01"],
-    "IP Reputation & Threats": ["DE.CM-02", "DE.AE-02"],
-    "Web Security Posture": ["PR.PS-02", "PR.DS-01"],
-    "Leakage & Breach History": ["RS.AN-03", "RC.RP-01"],
-    "Email Security": ["PR.AA-02", "PR.AT-01"],
+    "Attack Surface": [
+        "ID.AM-01",  # Identify assets within the organization (Asset Management)
+        "ID.RA-01",  # Conduct risk assessments to identify potential threats
+    ],
+    "Vulnerability Exposure": [
+        "PR.PS-01",  # Protect against vulnerabilities through personnel security
+        "DE.CM-01",  # Detect vulnerabilities with continuous monitoring
+    ],
+    "IP Reputation & Threats": [
+        "DE.CM-02",  # Detect anomalous activity (e.g., suspicious IP addresses)
+        "DE.AE-02",  # Analyze detected events for threats and malicious activity
+    ],
+    "Web Security Posture": [
+        "PR.PS-02",  # Protect organizational systems through secure practices
+        "PR.DS-01",  # Protect data in transit and at rest (e.g., web traffic security)
+    ],
+    "Leakage & Breach History": [
+        "RS.AN-03",  # Analyze detected events for impact (root cause, scope, etc.)
+        "RC.RP-01",  # Execute recovery planning after incidents (Recovery Plan)
+    ],
+    "Email Security": [
+        "PR.AA-02",  # Enforce access control for email accounts
+        "PR.AT-01",  # Provide security awareness training (phishing, email hygiene)
+    ],
 }

@@ -1,4 +1,3 @@
-
 # ui functions
 
 1. show_all_companies(companies_payload)

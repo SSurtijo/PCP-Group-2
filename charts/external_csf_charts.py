@@ -1,32 +1,30 @@
-### external_csf_charts.py
-# Chart functions for internal controls CMM bar chart in PCP project.
-# All functions use strict formatting: file-level header (###), function-level header (#), and step-by-step logic (#) comments.
-
+###
+# File: charts/external_csf_charts.py
+# Description: Altair chart builders for external CSF findings and controls. Used in dashboard visualizations.
+###
 import altair as alt
 import pandas as pd
 from api import get_internal_scan
 from helpers import extract_rating, detect_control_ref_col, fmt_or_dash, csv_plain
 from utils.normalization import norm_ref
 from nist.nist_mappings import EXTERNAL_FINDINGS_TO_CONTROLS
-from utils.dataframe_utils import CATEGORY_NAMES
-
-# Bar chart of internal control CMM scores.
-# Usage: internal_controls_cmm_bar_chart(selected_company_id)
-# Returns: Altair chart or None
 
 
 def internal_controls_cmm_bar_chart(selected_company_id: int) -> alt.Chart | None:
-    # Load internal scan rows
+    """Get internal scan data for selected company."""
     internal_rows = []
     try:
         internal_rows = get_internal_scan(limit=2000)
     except Exception:
         return None
+    """Handle empty scan data."""
     if not internal_rows:
         return None
+    """Build dataframe from internal scan rows."""
     df = pd.DataFrame(internal_rows)
     if df.empty:
         return None
+    """Detect control reference column and normalize references."""
     ctrl_col = detect_control_ref_col(df)
     if not ctrl_col:
         return None
@@ -34,12 +32,11 @@ def internal_controls_cmm_bar_chart(selected_company_id: int) -> alt.Chart | Non
     df["control_ref_norm"] = df[ctrl_col].apply(norm_ref)
     df["rating_val"] = df.apply(extract_rating, axis=1)
     df = df.dropna(subset=["control_ref_norm", "rating_val"])
-    # Get categories present in selected company data
     from json_handler import load_company_bundle
 
+    """Load company bundle and collect present categories."""
     bundle = load_company_bundle(selected_company_id) or {}
     present_categories = set()
-    # Check both top-level 'categories' and domain findings
     for cat in bundle.get("categories", []):
         c = cat.get("Category")
         if c:
@@ -47,10 +44,10 @@ def internal_controls_cmm_bar_chart(selected_company_id: int) -> alt.Chart | Non
     for domain in bundle.get("domains", []):
         fbc = domain.get("findings_by_category", {})
         present_categories.update(fbc.keys())
-    # Build reverse index: control -> categories (filtered by present)
     from services import get_company_category_scores_df
     from collections import defaultdict
 
+    """Get company category scores and filter present categories."""
     scores_df = get_company_category_scores_df(selected_company_id)
     present_categories = set()
     if (
@@ -61,26 +58,7 @@ def internal_controls_cmm_bar_chart(selected_company_id: int) -> alt.Chart | Non
         present_categories = {
             str(x).strip() for x in scores_df["Category"].dropna().tolist()
         }
-
-    internal_rows = []
-    try:
-        internal_rows = get_internal_scan(limit=2000)
-    except Exception:
-        return None
-    if not internal_rows:
-        return None
-    df_ctrl = pd.DataFrame(internal_rows)
-    if df_ctrl.empty:
-        return None
-    ctrl_col = detect_control_ref_col(df_ctrl)
-    if not ctrl_col:
-        return None
-    df_ctrl = df_ctrl.copy()
-    df_ctrl["control_ref_norm"] = df_ctrl[ctrl_col].apply(norm_ref)
-    df_ctrl["rating_val"] = df_ctrl.apply(extract_rating, axis=1)
-    df_ctrl = df_ctrl.dropna(subset=["control_ref_norm", "rating_val"])
-
-    # Build control -> findings map, only for present categories
+    """Map controls to findings for present categories."""
     control_to_findings = defaultdict(list)
     for finding, ctrls in EXTERNAL_FINDINGS_TO_CONTROLS.items():
         if finding not in present_categories:
@@ -88,13 +66,10 @@ def internal_controls_cmm_bar_chart(selected_company_id: int) -> alt.Chart | Non
         for c in ctrls:
             control_to_findings[norm_ref(c)].append(finding)
     allowed_controls = set(control_to_findings.keys())
-
-    # Filter internal rows to allowed controls only
-    df_ctrl = df_ctrl[df_ctrl["control_ref_norm"].isin(allowed_controls)]
+    df_ctrl = df[df["control_ref_norm"].isin(allowed_controls)]
     if df_ctrl.empty:
         return None
-
-    # Prepare rows
+    """Build chart rows for each control and mapped category."""
     rows = []
     for _, r in df_ctrl.iterrows():
         c = r["control_ref_norm"]
@@ -112,9 +87,13 @@ def internal_controls_cmm_bar_chart(selected_company_id: int) -> alt.Chart | Non
         )
     if not rows:
         return None
+    """Prepare chart dataframe and sort by category order."""
     chart_df = pd.DataFrame(rows)
-    # Optional: stable x order by first category index in CATEGORY_NAMES
-    cat_index = {c: i for i, c in enumerate(CATEGORY_NAMES or [])}
+    cat_index = (
+        {c: i for i, c in enumerate(scores_df["Category"].dropna().tolist())}
+        if scores_df is not None and "Category" in scores_df.columns
+        else {}
+    )
     chart_df["cat_order"] = chart_df["control"].apply(
         lambda c: min(
             [cat_index.get(f, 10**6) for f in control_to_findings.get(c, [])] or [10**6]
@@ -122,6 +101,7 @@ def internal_controls_cmm_bar_chart(selected_company_id: int) -> alt.Chart | Non
     )
     chart_df = chart_df.sort_values(["cat_order", "control"])
     chart_df = chart_df.drop(columns=["cat_order"])
+    """Create bar chart: x=control, y=CMM score, tooltip for score and mapped category."""
     base = alt.Chart(chart_df).encode(
         x=alt.X("control:N", sort="ascending", title=None),
         y=alt.Y(
@@ -136,4 +116,5 @@ def internal_controls_cmm_bar_chart(selected_company_id: int) -> alt.Chart | Non
             alt.Tooltip("mapped_category_disp:N", title="Mapped Category"),
         ]
     )
+    """Return Altair chart object."""
     return bar.configure_axis(labelColor="white", titleColor="white")
